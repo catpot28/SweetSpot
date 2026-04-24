@@ -4,10 +4,11 @@ Bash helpers for local dev and one-off operational tasks. All scripts assume the
 
 ## Files
 
-- [setup.sh](setup.sh) — one-time: create the backend Python venv, install backend deps, install frontend deps, bootstrap `.env` from `.env.example`. Safe to re-run.
-- [dev-backend.sh](dev-backend.sh) — run FastAPI locally with auto-reload (`uvicorn app.main:app --reload`).
-- [dev-frontend.sh](dev-frontend.sh) — run the Vite dev server for the React PWA.
-- [handshake.sh](handshake.sh) — run a one-shot BUNQ sandbox handshake for a single hardcoded user and print the balance. This is **build step 1** per [../BUNQ_INTEGRATION.md](../BUNQ_INTEGRATION.md) — de-risk the handshake before wiring anything else.
+- [setup.sh](setup.sh) — one-time: create the backend Python venv at `backend/.venv`, install deps, bootstrap `.env` from `.env.example`. Safe to re-run.
+- [handshake.sh](handshake.sh) — one-shot BUNQ sandbox handshake; mints a fresh user and writes credentials to `backend/.bunq_state.json` (gitignored). Required before any backend command that hits BUNQ.
+- [topup.sh](topup.sh) — pulls money from `sugardaddy@bunq.com` to fund the sandbox user. Default 50 EUR; pass an amount as `$1` for custom (e.g. `scripts/topup.sh 100.00`).
+- [dev-backend.sh](dev-backend.sh) — run FastAPI locally with auto-reload on `http://127.0.0.1:8000`. Swagger UI at `/docs`.
+- [dev-frontend.sh](dev-frontend.sh) — run the Vite dev server (frontend not scaffolded yet).
 
 ## Convention
 

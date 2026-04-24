@@ -1,19 +1,20 @@
 # Runtime: Python 3.12
-# Pin versions as modules are implemented. Expected packages:
-#
-#   fastapi
-#   uvicorn[standard]
-#   httpx                 # async HTTP client for BUNQ / SerpApi / ImgBB / Telegram
-#   pydantic
-#   pydantic-settings     # env-var loading in app/core/config.py
+# Pin versions before production. For hackathon, loose bounds are fine.
+
+httpx                # async HTTP client for BUNQ / SerpApi / ImgBB / Telegram
+cryptography         # RSA request signing for BUNQ
+fastapi              # web framework
+uvicorn[standard]    # ASGI server (with watchfiles + uvloop)
+pydantic-settings    # env-var loading in app/core/config.py
+
+# Added as modules come online:
 #   supabase              # Supabase Python client
-#   cryptography          # BUNQ request signing (RSA, PKCS#1 v1.5 + SHA-256)
-#   python-telegram-bot   # Telegram bot helpers (or raw httpx — decide later)
+#   python-telegram-bot   # (or raw httpx — decide later)
 #   anthropic             # Claude API client
 #   python-multipart      # FastAPI file uploads for /lens/scan
 #
-# Dev-only (consider a separate requirements-dev.txt later):
+# Dev-only (move to requirements-dev.txt later):
 #   pytest
 #   pytest-asyncio
-#   respx                 # mock httpx for tests
+#   respx                 # mock httpx in tests
 #   ruff                  # lint

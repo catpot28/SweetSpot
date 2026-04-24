@@ -2,11 +2,13 @@
 
 HTTP routes grouped by resource. Each subfolder exposes an `APIRouter` that `app/main.py` mounts.
 
-- [bunq/](bunq/) — `/bunq/*` — users, balance, transactions, payments
-- [telegram/](telegram/) — `/telegram/webhook` — Telegram Bot API updates
-- [lens/](lens/) — `/lens/scan` — upload image, return 3-tier product matches
-- [wishlist/](wishlist/) — `/wishlist/*` — CRUD for tracked items
-- [webhooks/](webhooks/) — `/webhooks/bunq` — BUNQ `notification-filter-url` receiver
+| Folder | Mount | Status |
+|---|---|---|
+| [bunq/](bunq/) | `/bunq/*` — users, balance, transactions, payments | **Built** (5 routes) |
+| [telegram/](telegram/) | `/telegram/webhook` — Telegram Bot API updates | Pending |
+| [lens/](lens/) | `/lens/scan` — upload image, return 3-tier product matches | Pending |
+| [wishlist/](wishlist/) | `/wishlist/*` — CRUD for tracked items | Pending |
+| [webhooks/](webhooks/) | `/webhooks/bunq` — `notification-filter-url` receiver | Pending |
 
 ## Rule
 

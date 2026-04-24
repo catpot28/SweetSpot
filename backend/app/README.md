@@ -1,6 +1,6 @@
 # app/
 
-FastAPI application package. `main.py` (to be created) wires routers into a single `FastAPI()` instance.
+FastAPI application package. [main.py](main.py) wires routers into a single `FastAPI()` instance and runs CORS + error handlers.
 
 ## Subpackages
 
@@ -14,3 +14,8 @@ FastAPI application package. `main.py` (to be created) wires routers into a sing
 - Route modules stay thin: validate input → call a service → return a response.
 - Services are stateless; they get credentials from `core/config`.
 - No cross-imports between `services/` and `api/` — `api/` depends on `services/`, never the other way around.
+
+## Status
+
+- **Built:** `main.py`, `services/bunq/`, `api/bunq/`, `core/config.py`, `core/deps.py`.
+- **Pending:** `services/{serpapi,imgbb,anthropic,sweetspot}/`, `api/{telegram,lens,wishlist,webhooks}/`, `db/`, `core/logging.py`.

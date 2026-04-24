@@ -2,10 +2,13 @@
 
 Cross-cutting plumbing — config, logging, dependency injection. Imported by nearly everything else; depends on nothing application-specific.
 
-## Planned modules
+## Built
 
-- `config.py` — `pydantic-settings` loader for env vars: `BUNQ_API_BASE`, `SUPABASE_URL`, `SUPABASE_KEY`, `SERPAPI_KEY`, `IMGBB_KEY`, `ANTHROPIC_API_KEY`, `TELEGRAM_BOT_TOKEN`. One `Settings` instance reused across the app.
+- [config.py](config.py) — `pydantic-settings` `Settings` class loaded from repo-root `.env`. Currently exposes `bunq_api_base`. New keys (Supabase, Anthropic, SerpApi, ImgBB, Telegram) get added here as those services come online.
+- [deps.py](deps.py) — FastAPI `Depends(...)` providers. Currently `get_bunq_client()`, an async generator that loads the JSON state file and yields a `BunqClient`. Will gain `get_db_client()` and per-user dispatch once Supabase lands.
+
+## Pending
+
 - `logging.py` — structured logger setup (JSON lines, request-id correlation).
-- `deps.py` — FastAPI `Depends(...)` providers: Supabase client, `BunqClient` factory keyed by user, current-user resolver.
 
 All config is loaded once at startup and injected — never `os.environ.get` scattered through the codebase.

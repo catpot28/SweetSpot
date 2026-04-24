@@ -233,3 +233,7 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# --- Local BUNQ handshake state (never commit — contains private key + session token) ---
+.bunq_state.json
+backend/.bunq_state.json

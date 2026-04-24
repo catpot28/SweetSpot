@@ -11,16 +11,21 @@ Python 3.12, FastAPI. A single service that:
 ## Structure
 
 - [app/](app/) — application package (routers, services, db, core)
-- [tests/](tests/) — pytest suite
-- [requirements.txt](requirements.txt) — pinned deps (fill in as modules get built)
+- [tests/](tests/) — pytest suite (no tests yet)
+- [requirements.txt](requirements.txt) — current deps: `httpx`, `cryptography`, `fastapi`, `uvicorn[standard]`, `pydantic-settings`. More land as modules come online.
 
 ## Runtime
 
-- Python **3.12**
+- Python **3.12** (pinned via repo-root `.python-version`)
 - Local dev: `uvicorn app.main:app --reload` (see [../scripts/dev-backend.sh](../scripts/dev-backend.sh))
-- Deployed to Railway; per-user state persisted to Supabase because Railway disk is ephemeral — see [../BUNQ_INTEGRATION.md](../BUNQ_INTEGRATION.md).
+- Currently single-user: state in `backend/.bunq_state.json`. Will become multi-user once Supabase is wired up — same fields, just one row per Telegram user (per [../BUNQ_INTEGRATION.md](../BUNQ_INTEGRATION.md)).
 
 ## Entry points
 
-- `app.main:app` — the `FastAPI()` instance; mounts every router under [app/api/](app/api/).
-- Webhooks: `/webhooks/bunq`, `/telegram/webhook`.
+- `app.main:app` — the `FastAPI()` instance; mounts routers under [app/api/](app/api/).
+- Currently mounted: `/health`, `/bunq/*` (5 routes). Telegram, Lens, Wishlist, BUNQ webhook receiver — pending.
+
+## Status
+
+- **Built:** `app/services/bunq/` (client + signing + state + 6 operations), `app/api/bunq/` (5 routes), `app/core/config.py`, `app/core/deps.py`, `app/main.py`.
+- **Pending:** everything under `app/api/{telegram,lens,wishlist,webhooks}/`, `app/services/{serpapi,imgbb,anthropic,sweetspot}/`, `app/db/`, `app/core/logging.py`.

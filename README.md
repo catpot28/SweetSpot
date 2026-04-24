@@ -31,10 +31,24 @@ Every folder has its own `README.md` describing what lives there and what is pla
 ## Quick start
 
 1. Copy [.env.example](.env.example) to `.env` and fill in the keys.
-2. `./scripts/setup.sh` — create venv, install deps (once implemented).
-3. `./scripts/dev-backend.sh` — run FastAPI locally.
-4. `./scripts/dev-frontend.sh` — run Vite dev server.
+2. `./scripts/setup.sh` — creates the Python 3.12 venv at `backend/.venv`, installs deps.
+3. `./scripts/handshake.sh` — runs the BUNQ sandbox handshake, saves creds to `backend/.bunq_state.json`. Required before any other backend command.
+4. `./scripts/dev-backend.sh` — runs FastAPI at `http://127.0.0.1:8000` (try `/docs` for the interactive Swagger UI).
+5. `./scripts/dev-frontend.sh` — Vite dev server (frontend not scaffolded yet).
+
+## Status
+
+| Layer | State |
+|---|---|
+| BUNQ integration (client, signing, 5 routes) | **Built** — verified end-to-end against the sandbox |
+| Supabase persistence (multi-user) | Pending — single-user JSON file for now |
+| Telegram bot webhook | Pending |
+| Lens pipeline (ImgBB + SerpApi) | Pending |
+| Sweet-spot algorithm | Pending |
+| Anthropic reasoning | Pending |
+| Frontend (React PWA) | Not scaffolded |
+| Railway deploy | Not deployed |
 
 ## Build order
 
-Follow the staging in [BUNQ_INTEGRATION.md](BUNQ_INTEGRATION.md). De-risk the BUNQ handshake first — everything else depends on it.
+Follow the staging in [BUNQ_INTEGRATION.md](BUNQ_INTEGRATION.md). De-risk the BUNQ handshake first — everything else depends on it. Steps 1–3 (handshake → client → routes) are done.
