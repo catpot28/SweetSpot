@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -17,6 +18,10 @@ class Settings(BaseSettings):
     )
 
     bunq_api_base: str = "https://public-api.sandbox.bunq.com"
+
+    # Supabase Postgres connection string (transaction pooler, port 6543).
+    # SecretStr keeps the password out of repr / logs.
+    database_url: SecretStr | None = None
 
 
 settings = Settings()
