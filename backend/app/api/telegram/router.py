@@ -33,30 +33,32 @@ async def webhook(request: Request):
 
     file_id = photos[-1]["file_id"]
 
-    async with httpx.AsyncClient(timeout=15) as client:
-        # Get file path from Telegram
-        res = await client.get(
-            f"https://api.telegram.org/bot{settings.telegram_bot_token}/getFile",
-            params={"file_id": file_id},
-        )
-        res.raise_for_status()
-        file_path = res.json()["result"]["file_path"]
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            res = await client.get(
+                f"https://api.telegram.org/bot{settings.telegram_bot_token}/getFile",
+                params={"file_id": file_id},
+            )
+            res.raise_for_status()
+            file_path = res.json()["result"]["file_path"]
 
-        # Download the image bytes
-        img_res = await client.get(
-            f"https://api.telegram.org/file/bot{settings.telegram_bot_token}/{file_path}"
-        )
-        img_res.raise_for_status()
-        image_bytes = img_res.content
+            img_res = await client.get(
+                f"https://api.telegram.org/file/bot{settings.telegram_bot_token}/{file_path}"
+            )
+            img_res.raise_for_status()
+            image_bytes = img_res.content
 
-    # Upload to ImgBB
-    image_url = await upload(image_bytes)
+        image_url = await upload(image_bytes)
+        reply = f"✅ Image saved!\n{image_url}"
+        log.info("ImgBB upload success: %s", image_url)
+    except Exception as e:
+        log.exception("Failed to process photo")
+        reply = f"❌ Failed to save image: {e}"
 
-    # Reply to user
     async with httpx.AsyncClient() as client:
         await client.post(
             f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage",
-            json={"chat_id": chat_id, "text": f"Image saved to ImgBB:\n{image_url}"},
+            json={"chat_id": chat_id, "text": reply},
         )
 
     return {"ok": True}
