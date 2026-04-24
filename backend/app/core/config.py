@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     )
 
     bunq_api_base: str = "https://public-api.sandbox.bunq.com"
+    telegram_bot_token: str = ""
+    imgbb_key: str = ""
+    railway_public_url: str = ""
 
 
 settings = Settings()
