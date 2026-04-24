@@ -110,7 +110,7 @@ class BunqClient:
             item["Token"]["token"] for item in data["Response"] if "Token" in item
         )
         self._state = self._state.with_session(new_token)
-        self._store.save(self._state)
+        await self._store.save(self._state)
 
     def _base_headers(self) -> dict[str, str]:
         return {

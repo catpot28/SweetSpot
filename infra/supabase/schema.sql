@@ -326,3 +326,43 @@ create table if not exists public.offer_refresh_jobs (
 create index if not exists offer_refresh_jobs_pending_idx
   on public.offer_refresh_jobs (run_after)
   where started_at is null;
+
+-- ---------------------------------------------------------------------------
+-- BUNQ credentials
+-- ---------------------------------------------------------------------------
+-- One row per BUNQ identity. Stores everything we need to resume a user's
+-- BUNQ session without re-running the 4-call handshake. See
+-- BUNQ_INTEGRATION.md for the field meanings.
+--
+-- user_id is nullable for now: our current sandbox flow mints a BUNQ user
+-- before we have a Supabase auth user to link to. Once the Telegram bot
+-- onboarding lands, every new row will be linked at insert time.
+
+create table if not exists public.bunq_credentials (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid unique references auth.users(id) on delete cascade,
+
+  -- BUNQ-side identifiers (used to address /v1/user/{uid}/...).
+  bunq_user_id bigint not null,
+  monetary_account_id bigint not null,
+
+  -- Credentials minted during the handshake.
+  api_key text not null,
+  private_key_pem text not null,
+  server_public_key text not null,
+  installation_token text not null,
+  device_id bigint not null,
+  session_token text not null,
+  session_expires_at timestamptz,
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint bunq_credentials_bunq_user_uniq unique (bunq_user_id)
+);
+
+-- Lookup by Supabase user is the production path; partial index keeps it
+-- small while user_id is mostly null.
+create index if not exists bunq_credentials_user_idx
+  on public.bunq_credentials (user_id)
+  where user_id is not null;
