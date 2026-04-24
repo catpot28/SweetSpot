@@ -1,6 +1,7 @@
 """SweetSpot FastAPI app entry point."""
 from __future__ import annotations
 
+import logging
 import httpx
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -10,16 +11,23 @@ from app.api.bunq.router import install_error_handlers, router as bunq_router
 from app.api.telegram.router import router as telegram_router
 from app.core.config import settings
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+log = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    log.info("token_set=%s  railway_url=%s", bool(settings.telegram_bot_token), settings.railway_public_url)
     if settings.telegram_bot_token and settings.railway_public_url:
         webhook_url = f"{settings.railway_public_url.rstrip('/')}/telegram/webhook"
         async with httpx.AsyncClient() as client:
-            await client.post(
+            res = await client.post(
                 f"https://api.telegram.org/bot{settings.telegram_bot_token}/setWebhook",
                 json={"url": webhook_url},
             )
+        log.info("setWebhook → %s", res.json())
+    else:
+        log.warning("Webhook NOT registered — set TELEGRAM_BOT_TOKEN and RAILWAY_PUBLIC_URL in Railway vars")
     yield
 
 

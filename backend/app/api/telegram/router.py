@@ -1,17 +1,32 @@
+import logging
 import httpx
 from fastapi import APIRouter, Request
 from app.core.config import settings
 from app.services.imgbb import upload
 
 router = APIRouter(prefix="/telegram", tags=["telegram"])
+log = logging.getLogger(__name__)
+
+
+@router.get("/status")
+async def status():
+    """Check what webhook URL Telegram currently has registered."""
+    async with httpx.AsyncClient() as client:
+        res = await client.get(
+            f"https://api.telegram.org/bot{settings.telegram_bot_token}/getWebhookInfo"
+        )
+    return res.json()
 
 
 @router.post("/webhook")
 async def webhook(request: Request):
     update = await request.json()
+    log.info("Webhook update received: %s", list(update.keys()))
     message = update.get("message", {})
     chat_id = message.get("chat", {}).get("id")
     photos = message.get("photo")
+
+    log.info("chat_id=%s has_photo=%s", chat_id, bool(photos))
 
     if not chat_id or not photos:
         return {"ok": True}
