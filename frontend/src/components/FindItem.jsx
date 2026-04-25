@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
 export default function FindItem({ onNavigate }) {
+  const isMobile = useIsMobile();
   const [mode, setMode] = useState("camera"); // "camera" | "screenshot"
   const [scanY, setScanY] = useState(0);
   const [glowIntensity, setGlowIntensity] = useState(0.4);
   const [gridOffset, setGridOffset] = useState(0);
   const [captured, setCaptured] = useState(false);
   const startTimeRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const SCAN_DURATION = 2200; // ms for one sweep
   const RETICLE = 220;
@@ -35,26 +38,27 @@ export default function FindItem({ onNavigate }) {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // Tapping the capture button opens the OS camera (or the photo picker
+  // in screenshot mode) via a hidden <input type=file>. Once the user picks
+  // a photo, the file lands in handleFileSelected → flash effect → navigate.
   const handleCapture = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
     setCaptured(true);
-    setTimeout(() => setCaptured(false), 600);
+    setTimeout(() => {
+      setCaptured(false);
+      onNavigate?.("scanning");
+    }, 600);
   };
 
   // ─── Styles ──────────────────────────────────────────────────────────────
 
-  const phoneStyle = {
-    width: 375,
-    height: 812,
-    background: "#000",
-    borderRadius: 52,
-    overflow: "hidden",
-    position: "relative",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif",
-    boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-    margin: "auto",
-    display: "flex",
-    flexDirection: "column",
-  };
+  const phoneStyle = phoneFrame(isMobile);
 
   // Simulated camera background
   const cameraStyle = {
@@ -365,7 +369,7 @@ export default function FindItem({ onNavigate }) {
           </>
         ) : (
           <>
-            <div style={uploadZone}>
+            <div style={uploadZone} onClick={handleCapture}>
               <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="rgba(80,220,120,0.7)" strokeWidth="1.5" strokeLinecap="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/>
@@ -380,6 +384,17 @@ export default function FindItem({ onNavigate }) {
         )}
       </div>
 
+      {/* Hidden input — capture="environment" opens the rear camera on
+          iOS/Android; without it, opens the photo picker for screenshots. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture={mode === "camera" ? "environment" : undefined}
+        onChange={handleFileSelected}
+        style={{ display: "none" }}
+      />
+
       {/* Bottom panel */}
       <div style={bottomOverlay}>
         {/* Toggle */}
@@ -392,8 +407,8 @@ export default function FindItem({ onNavigate }) {
           </button>
         </div>
 
-        {/* Capture button */}
-        <div style={captureRing} onClick={() => { handleCapture(); onNavigate('scanning'); }}>
+        {/* Capture button — opens native camera (or photo picker) */}
+        <div style={captureRing} onClick={handleCapture}>
           <div style={captureInner}>
             {mode === "screenshot" && (
               <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>

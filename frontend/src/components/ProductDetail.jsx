@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api";
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
 // What we charge against BUNQ when "Buy now" is pressed. The shown product
 // price (e.g. €299) would exceed our sandbox balance, so we send a token
@@ -229,6 +230,7 @@ function PriceChart({ data }) {
 }
 
 export default function ProductDetail({ onNavigate }) {
+  const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
   const [buyPressed, setBuyPressed] = useState(false);
   const [removePressed, setRemovePressed] = useState(false);
@@ -268,18 +270,7 @@ export default function ProductDetail({ onNavigate }) {
   );
 
   return (
-    <div style={{
-      width: 375,
-      height: 812,
-      background: "#000",
-      borderRadius: 52,
-      overflow: "hidden",
-      position: "relative",
-      boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-      margin: "auto",
-      display: "flex",
-      flexDirection: "column",
-    }}>
+    <div style={phoneFrame(isMobile)}>
 
       {/* Status bar */}
       <div style={{

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import SavingsChart from './SavingsChart';
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
 /**
  * SmartWishlist
@@ -16,6 +17,7 @@ export default function SmartWishlist({
   totalSaved = 847,
   stats = { bought: 17, onDiscount: 5, allTime: 42 },
 }) {
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("wishlist");
   const [findPressed, setFindPressed] = useState(false);
   const [wishlistPressed, setWishlistPressed] = useState(false);
@@ -23,18 +25,7 @@ export default function SmartWishlist({
   // ─── Styles ───────────────────────────────────────────────────────────────
 
   const s = {
-    root: {
-      width: 375,
-      height: 812,
-      background: "#000",
-      borderRadius: 52,
-      overflow: "hidden",
-      display: "flex",
-      flexDirection: "column",
-      boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-      position: "relative",
-      margin: "auto",
-    },
+    root: phoneFrame(isMobile),
     statusBar: {
       flexShrink: 0,
       height: 50,

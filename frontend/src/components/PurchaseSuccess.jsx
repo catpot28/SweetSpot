@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
 const CONFETTI_COUNT = 28;
 const COLORS = [
@@ -134,6 +135,7 @@ export default function PurchaseSuccess({
   productName = "Sony WH-1000XM5",
   price = "€299",
 }) {
+  const isMobile = useIsMobile();
   const [show, setShow] = useState(false);
 
   // Stagger text in
@@ -155,20 +157,7 @@ export default function PurchaseSuccess({
   });
 
   return (
-    <div style={{
-      width: 375,
-      height: 812,
-      background: "#000",
-      borderRadius: 52,
-      overflow: "hidden",
-      position: "relative",
-      boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-      margin: "auto",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-    }}>
+    <div style={{ ...phoneFrame(isMobile), alignItems: "center", justifyContent: "center" }}>
 
       {/* Ambient radial glow */}
       <div style={{
