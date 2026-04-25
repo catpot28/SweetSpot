@@ -33,7 +33,10 @@ async def _call_serpapi(image_url: str) -> dict[str, Any]:
         "url": image_url,
         "hl": _LANGUAGE_CODE,
         "country": _COUNTRY_CODE.lower(),
-        "search_type": "products",
+        # SerpApi parameter is `type`, not `search_type` — the latter is silently
+        # ignored, defaulting to `all` which includes news/social/gallery pages
+        # (no prices). `products` returns the products tab, which has prices.
+        "type": "products",
         "safe": _SAFE_MODE,
         "auto_crop": "true",
         "api_key": settings.serpapi_key,
