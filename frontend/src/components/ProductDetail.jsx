@@ -1,4 +1,13 @@
 import { useState, useEffect } from "react";
+import { api } from "../lib/api";
+
+// What we charge against BUNQ when "Buy now" is pressed. The shown product
+// price (e.g. €299) would exceed our sandbox balance, so we send a token
+// payment to sugardaddy@bunq.com instead — proves the BUNQ flow without
+// requiring large sandbox top-ups before every demo.
+const PURCHASE_AMOUNT_EUR = "1.00";
+const PURCHASE_COUNTERPARTY = "sugardaddy@bunq.com";
+const PURCHASE_DESCRIPTION = "Sony WH-1000XM5";
 
 const PRICE_HISTORY = [
   { month: "Feb", value: 349 },
@@ -63,11 +72,30 @@ export default function ProductDetail({ onNavigate }) {
   const [visible, setVisible] = useState(false);
   const [buyPressed, setBuyPressed] = useState(false);
   const [removePressed, setRemovePressed] = useState(false);
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 60);
     return () => clearTimeout(t);
   }, []);
+
+  const handleBuy = async () => {
+    if (buying) return;
+    setBuying(true);
+    try {
+      const draft = await api.createDraftPayment({
+        amountEur: PURCHASE_AMOUNT_EUR,
+        counterpartyEmail: PURCHASE_COUNTERPARTY,
+        description: PURCHASE_DESCRIPTION,
+      });
+      await api.confirmDraftPayment(draft.draft_id);
+      onNavigate("success");
+    } catch (err) {
+      console.error("buy failed:", err);
+      alert(`Buy failed: ${err.message}`);
+      setBuying(false);
+    }
+  };
 
   const fadeIn = (delay = 0) => ({
     opacity: visible ? 1 : 0,
@@ -309,7 +337,8 @@ export default function ProductDetail({ onNavigate }) {
         ...fadeIn(280),
       }}>
         <button
-          onClick={() => onNavigate('success')}
+          onClick={handleBuy}
+          disabled={buying}
           onMouseDown={() => setBuyPressed(true)}
           onMouseUp={() => setBuyPressed(false)}
           onTouchStart={() => setBuyPressed(true)}
@@ -321,13 +350,14 @@ export default function ProductDetail({ onNavigate }) {
             background: "#50dc78",
             color: "#021208",
             fontSize: 15, fontWeight: 800,
-            cursor: "pointer",
+            cursor: buying ? "wait" : "pointer",
             letterSpacing: -0.2,
-            transform: buyPressed ? "scale(0.96)" : "scale(1)",
+            transform: buyPressed && !buying ? "scale(0.96)" : "scale(1)",
             transition: "transform 0.15s, filter 0.15s",
-            filter: buyPressed ? "brightness(0.85)" : "none",
+            filter: buying ? "brightness(0.7)" : (buyPressed ? "brightness(0.85)" : "none"),
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             boxShadow: "0 6px 24px rgba(80,220,120,0.3)",
+            opacity: buying ? 0.7 : 1,
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#021208" strokeWidth="2.5" strokeLinecap="round">
@@ -335,7 +365,7 @@ export default function ProductDetail({ onNavigate }) {
             <polyline points="15 3 21 3 21 9"/>
             <line x1="10" y1="14" x2="21" y2="3"/>
           </svg>
-          Buy now
+          {buying ? "Processing…" : "Buy now"}
         </button>
         <button
           onMouseDown={() => setRemovePressed(true)}
