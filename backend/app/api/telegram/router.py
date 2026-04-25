@@ -1,5 +1,4 @@
 import logging
-import re
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -9,7 +8,7 @@ from fastapi import APIRouter, Request
 
 from app.core.config import settings
 from app.services.imgbb import upload
-from app.services.serpapi import search_products
+from app.services.serpapi import list_candidates, search_products
 from app.services.wishlist import add_candidate_to_wishlist
 
 router = APIRouter(prefix="/telegram", tags=["telegram"])
@@ -64,12 +63,29 @@ async def webhook(request: Request):
         result = await search_products(image_url)
         log.info("Persisted product search %s with %d candidates", result.product_search_id, len(result.candidate_ids))
 
-        # Pick the cheapest candidate and add it to the wishlist automatically.
-        cheapest_id, cheapest_match = _pick_cheapest(result.candidate_ids, result.matches)
-        wishlist_item_id = await add_candidate_to_wishlist(cheapest_id)
-        log.info("Added candidate %s to wishlist as item %s", cheapest_id, wishlist_item_id)
+        if not result.candidate_ids:
+            await send_message(chat_id, "🔍 No products found for this image.")
+            return {"ok": True}
 
-        reply = _format_added(cheapest_match, result.matches)
+        # Fetch the persisted DB rows — guaranteed ID/price consistency.
+        candidates = await list_candidates(result.product_search_id, limit=10)
+        log.info("Fetched %d candidates from DB for search %s", len(candidates), result.product_search_id)
+
+        if not candidates:
+            await send_message(chat_id, "🔍 No products found for this image.")
+            return {"ok": True}
+
+        # Pick cheapest by current_price_amount; fall back to first candidate.
+        cheapest = _pick_cheapest(candidates)
+        log.info(
+            "Cheapest candidate: id=%s title=%r price=%s",
+            cheapest["id"], cheapest.get("title"), cheapest.get("current_price_amount"),
+        )
+
+        wishlist_item_id = await add_candidate_to_wishlist(cheapest["id"])
+        log.info("Added candidate %s to wishlist as item %s", cheapest["id"], wishlist_item_id)
+
+        reply = _format_added(cheapest, candidates)
     except Exception as e:
         log.exception("Failed to process photo")
         reply = f"❌ Something went wrong: {e}"
@@ -78,66 +94,60 @@ async def webhook(request: Request):
     return {"ok": True}
 
 
-def _pick_cheapest(
-    candidate_ids: list[UUID],
-    matches: list[dict[str, Any]],
-) -> tuple[UUID, dict[str, Any]]:
-    """Return the (candidate_id, match) pair with the lowest extracted price.
+def _pick_cheapest(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    """Return the candidate with the lowest current_price_amount.
 
-    Falls back to the first candidate when no prices are available.
+    Falls back to the first candidate when none have a price.
     """
-    best_id = candidate_ids[0]
-    best_match = matches[0]
-    best_price: Decimal | None = None
-
-    for cid, match in zip(candidate_ids, matches):
-        price = _parse_price(match)
-        if price is not None and (best_price is None or price < best_price):
-            best_price = price
-            best_id = cid
-            best_match = match
-
-    return best_id, best_match
+    priced = [c for c in candidates if c.get("current_price_amount") is not None]
+    if not priced:
+        return candidates[0]
+    return min(priced, key=lambda c: Decimal(str(c["current_price_amount"])))
 
 
-def _parse_price(match: dict[str, Any]) -> Decimal | None:
-    extracted = match.get("extracted_price")
-    if isinstance(extracted, (int, float)) and not isinstance(extracted, bool) and extracted > 0:
-        return Decimal(str(extracted))
-    raw = match.get("price")
-    if isinstance(raw, dict):
-        raw = raw.get("value") or raw.get("extracted_value")
-    if raw:
-        m = re.search(r"\d+(?:[.,]\d+)?", str(raw).replace(",", "."))
-        if m:
-            try:
-                return Decimal(m.group())
-            except Exception:
-                pass
-    return None
-
-
-def _format_added(added: dict[str, Any], all_matches: list[dict[str, Any]]) -> str:
+def _format_added(added: dict[str, Any], all_candidates: list[dict[str, Any]]) -> str:
     title = added.get("title") or "Unknown product"
-    price_raw = added.get("price") or "Price unavailable"
-    price = price_raw.get("value") if isinstance(price_raw, dict) else str(price_raw)
+    merchant = added.get("merchant_name") or ""
+    link = added.get("product_url") or ""
 
-    lines = [f"✅ Added to wishlist:\n{title}\n💰 {price}\n"]
+    price_line = _price_str(added)
 
-    other = [m for m in all_matches if m is not added]
-    if other:
-        lines.append("🔍 Other matches found:")
-        for m in other:
-            t = m.get("title") or "Unknown"
-            p_raw = m.get("price") or ""
-            p = p_raw.get("value") if isinstance(p_raw, dict) else str(p_raw)
-            link = m.get("link") or m.get("product_link") or ""
-            entry = f"• {t}  💰 {p}"
-            if link:
-                entry += f"\n  🔗 {link}"
+    header = f"✅ Added to wishlist:\n{title}"
+    if merchant:
+        header += f"\n🏪 {merchant}"
+    if price_line:
+        header += f"\n💰 {price_line}"
+    if link:
+        header += f"\n🔗 {link}"
+
+    lines = [header]
+
+    others = [c for c in all_candidates if c["id"] != added["id"]]
+    if others:
+        lines.append("🔍 Other matches:")
+        for c in others:
+            t = c.get("title") or "Unknown"
+            m = c.get("merchant_name") or ""
+            p = _price_str(c)
+            u = c.get("product_url") or ""
+            entry = f"• {t}" + (f" — {m}" if m else "") + (f"  💰 {p}" if p else "")
+            if u:
+                entry += f"\n  🔗 {u}"
             lines.append(entry)
 
     return "\n\n".join(lines)
+
+
+def _price_str(candidate: dict[str, Any]) -> str:
+    text = candidate.get("current_price_text")
+    if text:
+        return text
+    amount = candidate.get("current_price_amount")
+    if amount is not None:
+        currency = candidate.get("currency_code") or "€"
+        symbol = {"EUR": "€", "USD": "$", "GBP": "£"}.get(currency, currency + " ")
+        return f"{symbol}{amount}"
+    return ""
 
 
 async def send_message(chat_id: int, text: str) -> None:
