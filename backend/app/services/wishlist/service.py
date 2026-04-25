@@ -33,9 +33,20 @@ async def add_candidate_to_wishlist(
     )
 
 
-async def list_wishlist_items() -> list[dict[str, Any]]:
+async def mark_wishlist_item_bought(wishlist_item_id: UUID) -> None:
+    """Stamp purchased_at = now() on the wishlist row. Raises LookupError if
+    the item doesn't exist."""
     pool = await ensure_pool()
-    rows = await product_searches_repo.list_wishlist_items(pool)
+    updated = await product_searches_repo.mark_wishlist_item_bought(
+        pool, wishlist_item_id
+    )
+    if updated is None:
+        raise LookupError(f"unknown wishlist item {wishlist_item_id}")
+
+
+async def list_wishlist_items(filter_: str | None = None) -> list[dict[str, Any]]:
+    pool = await ensure_pool()
+    rows = await product_searches_repo.list_wishlist_items(pool, filter_=filter_)
     return [_record_to_wishlist_item(row) for row in rows]
 
 
@@ -67,6 +78,7 @@ def _record_to_wishlist_item(row: Any) -> dict[str, Any]:
         "sweet_spot": row["sweet_spot"],
         "reasoning": row["reasoning"],
         "added_at": row["added_at"],
+        "purchased_at": row["purchased_at"],
         "candidate": {
             "id": row["id"],
             "user_id": row["user_id"],

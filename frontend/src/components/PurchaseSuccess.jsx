@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from "react";
+import StatusBar from './StatusBar';
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
 const CONFETTI_COUNT = 28;
 const COLORS = [
@@ -134,6 +136,7 @@ export default function PurchaseSuccess({
   productName = "Sony WH-1000XM5",
   price = "€299",
 }) {
+  const isMobile = useIsMobile();
   const [show, setShow] = useState(false);
 
   // Stagger text in
@@ -155,21 +158,7 @@ export default function PurchaseSuccess({
   });
 
   return (
-    <div style={{
-      width: 375,
-      height: 812,
-      background: "#000",
-      borderRadius: 52,
-      overflow: "hidden",
-      position: "relative",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif",
-      boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-      margin: "auto",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-    }}>
+    <div style={{ ...phoneFrame(isMobile), alignItems: "center", justifyContent: "center" }}>
 
       {/* Ambient radial glow */}
       <div style={{
@@ -196,31 +185,7 @@ export default function PurchaseSuccess({
       {/* Confetti */}
       {CONFETTI.map((p) => <ConfettiPiece key={p.id} piece={p} />)}
 
-      {/* Status bar */}
-      <div style={{
-        position: "absolute",
-        top: 0, left: 0, right: 0,
-        height: 50,
-        display: "flex", alignItems: "flex-end",
-        justifyContent: "space-between",
-        padding: "0 26px 8px",
-        zIndex: 10,
-      }}>
-        <span style={{ color: "#fff", fontSize: 16, fontWeight: 600 }}>9:41</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <svg width="17" height="11" viewBox="0 0 17 11" fill="white">
-            <rect x="0"    y="7"  width="3" height="4"  rx="0.8" opacity="0.35"/>
-            <rect x="4.5"  y="5"  width="3" height="6"  rx="0.8" opacity="0.55"/>
-            <rect x="9"    y="2"  width="3" height="9"  rx="0.8" opacity="0.75"/>
-            <rect x="13.5" y="0"  width="3" height="11" rx="0.8"/>
-          </svg>
-          <svg width="27" height="13" viewBox="0 0 27 13">
-            <rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke="white" strokeOpacity="0.35" fill="none"/>
-            <rect x="24" y="4" width="2.5" height="5" rx="1.5" fill="white" fillOpacity="0.4"/>
-            <rect x="2" y="2" width="18" height="9" rx="2" fill="white"/>
-          </svg>
-        </div>
-      </div>
+      <StatusBar style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }} />
 
       {/* Center content */}
       <div style={{

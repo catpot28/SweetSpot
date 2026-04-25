@@ -7,12 +7,12 @@ fastapi              # web framework
 uvicorn[standard]    # ASGI server (with watchfiles + uvloop)
 pydantic-settings    # env-var loading in app/core/config.py
 asyncpg              # async Postgres driver for Supabase
+python-multipart     # FastAPI file uploads for /lens/scan
 
 # Added as modules come online:
 #   supabase              # Supabase Python client
 #   python-telegram-bot   # (or raw httpx — decide later)
 #   anthropic             # Claude API client
-#   python-multipart      # FastAPI file uploads for /lens/scan
 #
 # Dev-only (move to requirements-dev.txt later):
 #   pytest

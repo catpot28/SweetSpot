@@ -7,7 +7,12 @@ from app.api.wishlist.models import (
     AddWishlistItemResponse,
     WishlistItemResponse,
 )
-from app.services.wishlist import add_candidate_to_wishlist, list_wishlist_items
+from app.services.wishlist import (
+    add_candidate_to_wishlist,
+    list_wishlist_items,
+    mark_wishlist_item_bought,
+)
+from uuid import UUID
 
 router = APIRouter(prefix="/wishlist", tags=["wishlist"])
 
@@ -15,6 +20,20 @@ router = APIRouter(prefix="/wishlist", tags=["wishlist"])
 @router.get("", response_model=list[WishlistItemResponse])
 async def get_wishlist_items() -> list[WishlistItemResponse]:
     items = await list_wishlist_items()
+    return [WishlistItemResponse(**item) for item in items]
+
+
+@router.get("/discount", response_model=list[WishlistItemResponse])
+async def get_discounted_wishlist_items() -> list[WishlistItemResponse]:
+    """Wishlist items currently on discount (sweet_spot OR on_discount)."""
+    items = await list_wishlist_items(filter_="discount")
+    return [WishlistItemResponse(**item) for item in items]
+
+
+@router.get("/bought", response_model=list[WishlistItemResponse])
+async def get_bought_wishlist_items() -> list[WishlistItemResponse]:
+    """Wishlist items that have been purchased (purchased_at set)."""
+    items = await list_wishlist_items(filter_="bought")
     return [WishlistItemResponse(**item) for item in items]
 
 
@@ -35,3 +54,12 @@ async def create_wishlist_item(body: AddWishlistItemBody) -> AddWishlistItemResp
         wishlist_item_id=wishlist_item_id,
         product_candidate_id=body.product_candidate_id,
     )
+
+
+@router.post("/{wishlist_item_id}/buy", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_bought(wishlist_item_id: UUID) -> None:
+    """Mark a wishlist item as purchased — stamps purchased_at = now()."""
+    try:
+        await mark_wishlist_item_bought(wishlist_item_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

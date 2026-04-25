@@ -106,7 +106,7 @@ async def create_product_candidate(
             product_url,
             product_image_url,
             thumbnail_url,
-            current_price_text,
+            price,
             current_price_amount,
             currency_code,
             stock_status,
@@ -176,6 +176,15 @@ async def update_wishlist_analysis(
         SET
             reasoning = COALESCE($2, reasoning),
             sweet_spot = $3
+async def mark_wishlist_item_bought(
+    pool: asyncpg.Pool, wishlist_item_id: UUID
+) -> UUID | None:
+    """Stamp purchased_at = now() on the row. Returns the id if a row was
+    updated, None if no such item exists."""
+    return await pool.fetchval(
+        """
+        UPDATE wishlist_items
+        SET purchased_at = now()
         WHERE id = $1
         RETURNING id
         """,
@@ -203,7 +212,7 @@ async def list_product_candidates(
             product_url,
             product_image_url,
             thumbnail_url,
-            current_price_text,
+            price AS current_price_text,
             current_price_amount,
             currency_code,
             stock_status,
@@ -237,7 +246,7 @@ async def get_product_candidate(
             product_url,
             product_image_url,
             thumbnail_url,
-            current_price_text,
+            price AS current_price_text,
             current_price_amount,
             currency_code,
             stock_status,
@@ -251,9 +260,20 @@ async def get_product_candidate(
     )
 
 
-async def list_wishlist_items(pool: asyncpg.Pool) -> list[asyncpg.Record]:
+_WISHLIST_FILTERS = {
+    None:       "",
+    "discount": "WHERE COALESCE(wi.sweet_spot, false) OR COALESCE(wi.on_discount, false)",
+    "bought":   "WHERE wi.purchased_at IS NOT NULL",
+}
+
+
+async def list_wishlist_items(
+    pool: asyncpg.Pool, *, filter_: str | None = None
+) -> list[asyncpg.Record]:
+    """List wishlist items, optionally filtered to "discount" or "bought"."""
+    where = _WISHLIST_FILTERS.get(filter_, "")
     return await pool.fetch(
-        """
+        f"""
         SELECT
             wi.id AS wishlist_item_id,
             wi.user_id AS wishlist_user_id,
@@ -263,6 +283,7 @@ async def list_wishlist_items(pool: asyncpg.Pool) -> list[asyncpg.Record]:
             wi.sweet_spot,
             wi.reasoning,
             wi.added_at,
+            wi.purchased_at,
             pc.id,
             pc.user_id,
             pc.initial_search_id,
@@ -272,7 +293,7 @@ async def list_wishlist_items(pool: asyncpg.Pool) -> list[asyncpg.Record]:
             pc.product_url,
             pc.product_image_url,
             pc.thumbnail_url,
-            pc.current_price_text,
+            pc.price AS current_price_text,
             pc.current_price_amount,
             pc.currency_code,
             pc.stock_status,
@@ -282,6 +303,7 @@ async def list_wishlist_items(pool: asyncpg.Pool) -> list[asyncpg.Record]:
         FROM wishlist_items wi
         JOIN product_candidates pc
           ON pc.id = wi.product_candidate_id
+        {where}
         ORDER BY wi.added_at DESC
         """
     )

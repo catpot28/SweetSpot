@@ -6,3 +6,18 @@ body {
   align-items: center;
   min-height: 100vh;
 }
+
+@font-face {
+  font-family: "SF Pro Rounded";
+  src: url('./fonts/SFNSRounded.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+*, *::before, *::after {
+  font-family: "SF Pro Rounded", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+}

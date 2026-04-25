@@ -139,7 +139,15 @@ def _select_top_candidates(
         if not title or not product_url:
             continue
 
-        price_text = _as_non_empty_string(match.get("price"))
+        # SerpApi often returns price as a dict like
+        # {"value": "€160*", "extracted_value": 160, "currency": "€"};
+        # _as_non_empty_string drops dicts → NULL, so unwrap first.
+        raw_price = match.get("price")
+        if isinstance(raw_price, dict):
+            raw_price = raw_price.get("value") or raw_price.get("extracted_value")
+        price_text = _as_non_empty_string(
+            raw_price if isinstance(raw_price, str) else (str(raw_price) if raw_price is not None else None)
+        )
         price_amount, currency_code = _extract_price(match, price_text)
         stock_status = _extract_stock_status(match)
         selected.append(

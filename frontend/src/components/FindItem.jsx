@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from "react";
+import StatusBar from './StatusBar';
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
-export default function FindItem({ onNavigate }) {
+export default function FindItem({ onNavigate, onFileCaptured }) {
+  const isMobile = useIsMobile();
   const [mode, setMode] = useState("camera"); // "camera" | "screenshot"
   const [scanY, setScanY] = useState(0);
   const [glowIntensity, setGlowIntensity] = useState(0.4);
   const [gridOffset, setGridOffset] = useState(0);
   const [captured, setCaptured] = useState(false);
-  const animRef = useRef(null);
   const startTimeRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const SCAN_DURATION = 2200; // ms for one sweep
   const RETICLE = 220;
@@ -36,26 +39,28 @@ export default function FindItem({ onNavigate }) {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // Tapping the capture button opens the OS camera (or the photo picker
+  // in screenshot mode) via a hidden <input type=file>. Once the user picks
+  // a photo, the file lands in handleFileSelected → flash effect → navigate.
   const handleCapture = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    onFileCaptured?.(file);   // hand the File up to App so Scanning can upload it
     setCaptured(true);
-    setTimeout(() => setCaptured(false), 600);
+    setTimeout(() => {
+      setCaptured(false);
+      onNavigate?.("scanning");
+    }, 600);
   };
 
   // ─── Styles ──────────────────────────────────────────────────────────────
 
-  const phoneStyle = {
-    width: 375,
-    height: 812,
-    background: "#000",
-    borderRadius: 52,
-    overflow: "hidden",
-    position: "relative",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif",
-    boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-    margin: "auto",
-    display: "flex",
-    flexDirection: "column",
-  };
+  const phoneStyle = phoneFrame(isMobile);
 
   // Simulated camera background
   const cameraStyle = {
@@ -96,18 +101,6 @@ export default function FindItem({ onNavigate }) {
     bottom: 200, right: -40,
     filter: "blur(35px)",
     pointerEvents: "none",
-  };
-
-  // Status bar
-  const statusBar = {
-    position: "relative",
-    zIndex: 10,
-    height: 50,
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    padding: "0 26px 8px",
-    flexShrink: 0,
   };
 
   // Back button
@@ -165,16 +158,34 @@ export default function FindItem({ onNavigate }) {
     boxShadow: bracketGlow,
   };
 
-  // Scan line
+  // Laser beam — bright tip + comet tail fading upward
+  const tailHeight = Math.min(scanY, 80);
   const scanLine = {
     position: "absolute",
-    left: 4,
-    right: 4,
+    left: 0,
+    right: 0,
+    top: Math.max(0, scanY - tailHeight),
+    height: tailHeight + 2,
+    background: `linear-gradient(to bottom,
+      transparent 0%,
+      rgba(80,220,120,0.06) 40%,
+      rgba(80,220,120,0.25) 75%,
+      rgba(140,255,180,${0.85 + glowIntensity * 0.15}) 100%
+    )`,
+    pointerEvents: "none",
+    display: mode === "camera" ? "block" : "none",
+  };
+
+  // Laser tip — the bright sharp line at the bottom of the tail
+  const laserTip = {
+    position: "absolute",
+    left: 0,
+    right: 0,
     top: scanY,
     height: 2,
-    background: `linear-gradient(90deg, transparent, rgba(80,220,120,${glowIntensity * 0.9}), rgba(120,255,160,${glowIntensity}), rgba(80,220,120,${glowIntensity * 0.9}), transparent)`,
-    boxShadow: `0 0 ${8 + glowIntensity * 12}px rgba(80,220,120,${glowIntensity * 0.7})`,
-    borderRadius: 1,
+    background: `linear-gradient(90deg, transparent, rgba(180,255,210,0.9), rgba(255,255,255,1), rgba(180,255,210,0.9), transparent)`,
+    boxShadow: `0 0 6px 2px rgba(80,220,120,0.9), 0 0 18px 4px rgba(80,220,120,0.5)`,
+    borderRadius: 2,
     pointerEvents: "none",
     display: mode === "camera" ? "block" : "none",
   };
@@ -206,10 +217,11 @@ export default function FindItem({ onNavigate }) {
 
   const hintText = {
     color: "rgba(255,255,255,0.55)",
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: 500,
     textAlign: "center",
     letterSpacing: -0.2,
+    fontFamily: '"SF Pro Rounded", sans-serif',
   };
 
   // Bottom overlay
@@ -235,21 +247,23 @@ export default function FindItem({ onNavigate }) {
     padding: 3,
     display: "flex",
     gap: 2,
-    width: 200,
   };
 
   const toggleBtn = (active) => ({
     flex: 1,
-    height: 32,
+    height: 36,
+    padding: "0 28px",
     borderRadius: 100,
     border: "none",
     background: active ? "rgba(255,255,255,0.18)" : "transparent",
     color: active ? "#fff" : "rgba(255,255,255,0.45)",
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.2s",
     letterSpacing: -0.2,
+    fontFamily: '"SF Pro Rounded", sans-serif',
+    whiteSpace: "nowrap",
   });
 
   // Capture button
@@ -276,16 +290,6 @@ export default function FindItem({ onNavigate }) {
     border: "1px solid rgba(255,255,255,0.1)",
   };
 
-  const pasteLinkStyle = {
-    color: "rgba(80,220,120,0.8)",
-    fontSize: 14,
-    fontWeight: 500,
-    cursor: "pointer",
-    letterSpacing: -0.1,
-    textDecoration: "none",
-    marginTop: -6,
-  };
-
   return (
     <div style={phoneStyle}>
       {/* Camera BG */}
@@ -305,23 +309,7 @@ export default function FindItem({ onNavigate }) {
         )}
       </div>
 
-      {/* Status bar */}
-      <div style={statusBar}>
-        <span style={{ color: "#fff", fontSize: 16, fontWeight: 600 }}>9:41</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <svg width="17" height="11" viewBox="0 0 17 11" fill="white">
-            <rect x="0" y="7" width="3" height="4" rx="0.8" opacity="0.35"/>
-            <rect x="4.5" y="5" width="3" height="6" rx="0.8" opacity="0.55"/>
-            <rect x="9" y="2" width="3" height="9" rx="0.8" opacity="0.75"/>
-            <rect x="13.5" y="0" width="3" height="11" rx="0.8"/>
-          </svg>
-          <svg width="27" height="13" viewBox="0 0 27 13">
-            <rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke="white" strokeOpacity="0.35" fill="none"/>
-            <rect x="24" y="4" width="2.5" height="5" rx="1.5" fill="white" fillOpacity="0.4"/>
-            <rect x="2" y="2" width="18" height="9" rx="2" fill="white"/>
-          </svg>
-        </div>
-      </div>
+      <StatusBar style={{ position: "relative", zIndex: 10 }} />
 
       {/* Back button */}
       <div style={backBtn} onClick={() => onNavigate('home')}>
@@ -340,8 +328,9 @@ export default function FindItem({ onNavigate }) {
               {corners.map((c, i) => (
                 <div key={i} style={{ ...cornerBase, ...c }} />
               ))}
-              {/* Scan line */}
+              {/* Laser beam: tail + tip */}
               <div style={scanLine} />
+              <div style={laserTip} />
               <div style={scanOverlay} />
               {/* Dim inner */}
               <div style={{
@@ -354,13 +343,13 @@ export default function FindItem({ onNavigate }) {
           </>
         ) : (
           <>
-            <div style={uploadZone}>
+            <div style={uploadZone} onClick={handleCapture}>
               <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="rgba(80,220,120,0.7)" strokeWidth="1.5" strokeLinecap="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/>
                 <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, fontWeight: 600, textAlign: "center", letterSpacing: -0.2 }}>
+              <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 18, fontWeight: 600, textAlign: "center", letterSpacing: -0.2 }}>
                 Tap to upload<br/>screenshot
               </div>
             </div>
@@ -368,6 +357,17 @@ export default function FindItem({ onNavigate }) {
           </>
         )}
       </div>
+
+      {/* Hidden input — capture="environment" opens the rear camera on
+          iOS/Android; without it, opens the photo picker for screenshots. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture={mode === "camera" ? "environment" : undefined}
+        onChange={handleFileSelected}
+        style={{ display: "none" }}
+      />
 
       {/* Bottom panel */}
       <div style={bottomOverlay}>
@@ -381,8 +381,8 @@ export default function FindItem({ onNavigate }) {
           </button>
         </div>
 
-        {/* Capture button */}
-        <div style={captureRing} onClick={() => { handleCapture(); onNavigate('scanning'); }}>
+        {/* Capture button — opens native camera (or photo picker) */}
+        <div style={captureRing} onClick={handleCapture}>
           <div style={captureInner}>
             {mode === "screenshot" && (
               <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -396,8 +396,6 @@ export default function FindItem({ onNavigate }) {
           </div>
         </div>
 
-        {/* Paste link */}
-        <span style={pasteLinkStyle}>or paste a link</span>
       </div>
     </div>
   );
