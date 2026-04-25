@@ -27,6 +27,9 @@ async def add_candidate_to_wishlist(
         pool,
         product_candidate_id=product_candidate_id,
         note=note,
+        current_price_text=candidate["current_price_text"],
+        currency_code=candidate["currency_code"],
+        stock_status=candidate["stock_status"],
         on_discount=on_discount,
         sweet_spot=sweet_spot,
         reasoning=reasoning,
@@ -60,12 +63,33 @@ async def list_wishlist_items(filter_: str | None = None) -> list[dict[str, Any]
     return [_record_to_wishlist_item(row) for row in rows]
 
 
+async def update_wishlist_analysis(
+    wishlist_item_id: UUID,
+    *,
+    reasoning: str | None,
+    sweet_spot: bool,
+) -> UUID:
+    pool = await ensure_pool()
+    updated_wishlist_item_id = await product_searches_repo.update_wishlist_analysis(
+        pool,
+        wishlist_item_id=wishlist_item_id,
+        reasoning=reasoning,
+        sweet_spot=sweet_spot,
+    )
+    if updated_wishlist_item_id is None:
+        raise LookupError(f"unknown wishlist item {wishlist_item_id}")
+    return updated_wishlist_item_id
+
+
 def _record_to_wishlist_item(row: Any) -> dict[str, Any]:
     return {
         "wishlist_item_id": row["wishlist_item_id"],
         "wishlist_user_id": row["wishlist_user_id"],
         "product_candidate_id": row["product_candidate_id"],
         "note": row["note"],
+        "current_price_text": row["current_price_text"],
+        "currency_code": row["currency_code"],
+        "stock_status": row["stock_status"],
         "on_discount": row["on_discount"],
         "sweet_spot": row["sweet_spot"],
         "reasoning": row["reasoning"],
@@ -81,10 +105,10 @@ def _record_to_wishlist_item(row: Any) -> dict[str, Any]:
             "product_url": row["product_url"],
             "product_image_url": row["product_image_url"],
             "thumbnail_url": row["thumbnail_url"],
-            "current_price_text": row["current_price_text"],
+            "current_price_text": row["candidate_current_price_text"],
             "current_price_amount": row["current_price_amount"],
-            "currency_code": row["currency_code"],
-            "stock_status": row["stock_status"],
+            "currency_code": row["candidate_currency_code"],
+            "stock_status": row["candidate_stock_status"],
             "in_stock": row["in_stock"],
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],

@@ -3,6 +3,7 @@ from app.services.wishlist.service import (
     delete_wishlist_item,
     list_wishlist_items,
     mark_wishlist_item_bought,
+    update_wishlist_analysis,
 )
 
 __all__ = [
@@ -10,4 +11,5 @@ __all__ = [
     "delete_wishlist_item",
     "list_wishlist_items",
     "mark_wishlist_item_bought",
+    "update_wishlist_analysis",
 ]

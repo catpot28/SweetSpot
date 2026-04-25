@@ -83,6 +83,9 @@ async def test_create_product_candidate_links_to_initial_search():
     assert args[1] == initial_search_id
     assert args[2] == 1
     assert args[3] == "Candidate Title"
+    query, _ = pool.calls[0]
+    assert "price," in query
+    assert "current_price_text" not in query
     assert args[5] == "https://shop.example.com/item"
     assert args[8] == "$19.99"
     assert args[9] == Decimal("19.99")
@@ -100,18 +103,47 @@ async def test_create_wishlist_item_links_to_candidate():
         pool,
         product_candidate_id=candidate_id,
         user_id=None,
+        current_price_text="$19.99",
+        currency_code="USD",
+        stock_status="In stock",
         on_discount=True,
         sweet_spot=False,
         reasoning="LLM says wait",
     )
 
     assert result == expected_id
-    _, args = pool.calls[0]
+    query, args = pool.calls[0]
+    assert "current_price_text" in query
+    assert "currency_code" in query
+    assert "stock_status" in query
     assert args[0] is None
     assert args[1] == candidate_id
-    assert args[3] is True
-    assert args[4] is False
-    assert args[5] == "LLM says wait"
+    assert args[3] == "$19.99"
+    assert args[4] == "USD"
+    assert args[5] == "In stock"
+    assert args[6] is True
+    assert args[7] is False
+    assert args[8] == "LLM says wait"
+
+
+@pytest.mark.asyncio
+async def test_update_wishlist_analysis_preserves_reasoning_when_none():
+    expected_id = uuid4()
+    wishlist_item_id = uuid4()
+    pool = DummyPool(expected_id)
+
+    result = await product_searches_repo.update_wishlist_analysis(
+        pool,
+        wishlist_item_id=wishlist_item_id,
+        reasoning=None,
+        sweet_spot=True,
+    )
+
+    assert result == expected_id
+    _, args = pool.calls[0]
+    assert args[0] == wishlist_item_id
+    assert args[1] is None
+    assert args[2] is True
 
 
 @pytest.mark.asyncio
@@ -174,6 +206,10 @@ async def test_list_wishlist_items_joins_candidates():
     query, args = pool.calls[0]
     assert "FROM wishlist_items wi" in query
     assert "JOIN product_candidates pc" in query
+    assert "wi.current_price_text" in query
+    assert "wi.purchased_at" in query
+    assert "pc.price AS candidate_current_price_text" in query
+    assert "pc.currency_code AS candidate_currency_code" in query
     assert "wi.on_discount" in query
     assert "wi.sweet_spot" in query
     assert "wi.reasoning" in query

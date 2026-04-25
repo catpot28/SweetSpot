@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     imgbb_key: str = ""
     serpapi_key: str = ""
+    anthropic_api_key: str = ""
     railway_public_url: str = ""
 
 
