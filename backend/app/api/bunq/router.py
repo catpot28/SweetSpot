@@ -51,6 +51,15 @@ async def get_transactions(
     return await ops.list_transactions(client, count=count)
 
 
+class TopupBody(BaseModel):
+    amount_eur: str
+
+
+@router.post("/topup", status_code=204)
+async def topup(body: TopupBody, client: ClientDep) -> None:
+    await ops.topup_by_request_inquiry(client, amount_eur=body.amount_eur)
+
+
 @router.post("/payments/draft", response_model=DraftPaymentResponse)
 async def create_draft_payment(
     body: DraftPaymentBody, client: ClientDep
