@@ -266,7 +266,7 @@ export default function SmartWishlist({
             </div>
             <div>
               <div style={s.pillLabel}>Wishlist</div>
-              <div style={s.pillVal}>{itemCount} items</div>
+              <div style={{ ...s.pillVal, fontSize: 26, letterSpacing: -0.8, marginTop: 3 }}>{itemCount} items</div>
             </div>
             <span style={s.pillChevronPink}>›</span>
           </div>

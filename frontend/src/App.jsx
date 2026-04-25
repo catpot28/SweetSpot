@@ -50,7 +50,7 @@ function App() {
       {screen === 'home' && (
         <HomeScreen
           onNavigate={setScreen}
-          itemCount={counts.all}
+          itemCount={Math.max(0, counts.all - counts.bought)}
           stats={homeStats}
           currentBalance={balance}
           disposable={disposable}
