@@ -149,6 +149,10 @@ def _select_top_candidates(
             raw_price if isinstance(raw_price, str) else (str(raw_price) if raw_price is not None else None)
         )
         price_amount, currency_code = _extract_price(match, price_text)
+        log.info(
+            "candidate[%d] title=%r price_raw=%r price_text=%r price_amount=%s extracted_price=%s",
+            index, title, match.get("price"), price_text, price_amount, match.get("extracted_price"),
+        )
         stock_status = _extract_stock_status(match)
         selected.append(
             PersistableCandidate(
