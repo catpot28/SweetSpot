@@ -315,6 +315,16 @@ export default function ProductDetail({ onNavigate, product }) {
         description: detailProduct.name || DEFAULT_PURCHASE_DESCRIPTION,
       });
       await api.confirmDraftPayment(draft.draft_id);
+      // Mark the wishlist item as bought, if we came from the wishlist.
+      // Best-effort: a failure here shouldn't block the success screen since
+      // the BUNQ payment already executed.
+      if (wishlistItemId) {
+        try {
+          await api.markWishlistItemBought(wishlistItemId);
+        } catch (e) {
+          console.error("markWishlistItemBought failed:", e);
+        }
+      }
       onNavigate("success");
     } catch (err) {
       console.error("buy failed:", err);
