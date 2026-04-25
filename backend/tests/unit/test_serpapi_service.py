@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import httpx
 import pytest
 
-from app.services.serpapi import search_products
+from app.services.serpapi import list_candidates, search_products
 
 
 class FakeAsyncClient:
@@ -28,7 +29,7 @@ class FakeAsyncClient:
 
 
 @pytest.mark.asyncio
-async def test_search_products_persists_search_candidate_and_wishlist_item(monkeypatch):
+async def test_search_products_persists_top_three_candidates(monkeypatch):
     payload = {
         "search_metadata": {
             "id": "search-123",
@@ -52,8 +53,7 @@ async def test_search_products_persists_search_candidate_and_wishlist_item(monke
     }
     search_image_id = uuid4()
     product_search_id = uuid4()
-    product_candidate_id = uuid4()
-    wishlist_item_id = uuid4()
+    candidate_ids = [uuid4(), uuid4(), uuid4()]
 
     FakeAsyncClient.payload = payload
     FakeAsyncClient.requests = []
@@ -69,21 +69,14 @@ async def test_search_products_persists_search_candidate_and_wishlist_item(monke
         assert kwargs["status"] == "success"
         return product_search_id
 
-    async def fake_create_product_candidate(pool, **kwargs):
-        assert kwargs["initial_search_id"] == product_search_id
-        assert kwargs["result_position"] == 1
-        assert kwargs["title"] == "One"
-        assert kwargs["product_url"] == "https://shop.example.com/one"
-        assert kwargs["merchant_name"] == "Shop One"
-        assert str(kwargs["current_price_amount"]) == "10.50"
-        assert kwargs["currency_code"] == "USD"
-        return product_candidate_id
+    created_candidates = []
 
-    async def fake_create_wishlist_item(pool, **kwargs):
-        assert kwargs["product_candidate_id"] == product_candidate_id
-        return wishlist_item_id
+    async def fake_create_product_candidate(pool, **kwargs):
+        created_candidates.append(kwargs)
+        return candidate_ids[len(created_candidates) - 1]
 
     monkeypatch.setattr("app.services.serpapi.serpservice.httpx.AsyncClient", FakeAsyncClient)
+
     async def fake_ensure_pool():
         return object()
 
@@ -100,18 +93,23 @@ async def test_search_products_persists_search_candidate_and_wishlist_item(monke
         "app.services.serpapi.serpservice.product_searches_repo.create_product_candidate",
         fake_create_product_candidate,
     )
-    monkeypatch.setattr(
-        "app.services.serpapi.serpservice.product_searches_repo.create_wishlist_item",
-        fake_create_wishlist_item,
-    )
 
     result = await search_products("https://img.example.com/image.jpg")
 
     assert result.search_image_id == search_image_id
     assert result.product_search_id == product_search_id
-    assert result.product_candidate_id == product_candidate_id
-    assert result.wishlist_item_id == wishlist_item_id
+    assert result.candidate_ids == candidate_ids
     assert [match["title"] for match in result.matches] == ["One", "Two", "Three"]
+    assert len(created_candidates) == 3
+    assert created_candidates[0]["initial_search_id"] == product_search_id
+    assert created_candidates[0]["result_position"] == 1
+    assert created_candidates[0]["title"] == "One"
+    assert created_candidates[0]["product_url"] == "https://shop.example.com/one"
+    assert created_candidates[0]["merchant_name"] == "Shop One"
+    assert str(created_candidates[0]["current_price_amount"]) == "10.50"
+    assert created_candidates[0]["currency_code"] == "USD"
+    assert created_candidates[1]["result_position"] == 2
+    assert created_candidates[2]["result_position"] == 3
 
 
 @pytest.mark.asyncio
@@ -138,10 +136,8 @@ async def test_search_products_uses_fallback_results_when_visual_matches_missing
         assert kwargs["product_url"] == "https://shop.example.com/fallback-one"
         return uuid4()
 
-    async def fake_create_wishlist_item(pool, **kwargs):
-        return uuid4()
-
     monkeypatch.setattr("app.services.serpapi.serpservice.httpx.AsyncClient", FakeAsyncClient)
+
     async def fake_ensure_pool():
         return object()
 
@@ -157,10 +153,6 @@ async def test_search_products_uses_fallback_results_when_visual_matches_missing
     monkeypatch.setattr(
         "app.services.serpapi.serpservice.product_searches_repo.create_product_candidate",
         fake_create_product_candidate,
-    )
-    monkeypatch.setattr(
-        "app.services.serpapi.serpservice.product_searches_repo.create_wishlist_item",
-        fake_create_wishlist_item,
     )
 
     result = await search_products("https://img.example.com/image.jpg")
@@ -190,10 +182,8 @@ async def test_search_products_skips_candidate_persistence_when_no_linkable_matc
     async def unexpected_create_product_candidate(pool, **kwargs):
         raise AssertionError("candidate should not be persisted without title and link")
 
-    async def unexpected_create_wishlist_item(pool, **kwargs):
-        raise AssertionError("wishlist item should not be created without candidate")
-
     monkeypatch.setattr("app.services.serpapi.serpservice.httpx.AsyncClient", FakeAsyncClient)
+
     async def fake_ensure_pool():
         return object()
 
@@ -210,12 +200,50 @@ async def test_search_products_skips_candidate_persistence_when_no_linkable_matc
         "app.services.serpapi.serpservice.product_searches_repo.create_product_candidate",
         unexpected_create_product_candidate,
     )
-    monkeypatch.setattr(
-        "app.services.serpapi.serpservice.product_searches_repo.create_wishlist_item",
-        unexpected_create_wishlist_item,
-    )
 
     result = await search_products("https://img.example.com/image.jpg")
 
-    assert result.product_candidate_id is None
-    assert result.wishlist_item_id is None
+    assert result.candidate_ids == []
+
+
+@pytest.mark.asyncio
+async def test_list_candidates_returns_records_sorted_from_repo(monkeypatch):
+    search_id = uuid4()
+    timestamp = datetime.now(timezone.utc)
+
+    async def fake_ensure_pool():
+        return object()
+
+    async def fake_list_product_candidates(pool, **kwargs):
+        assert kwargs["initial_search_id"] == search_id
+        assert kwargs["limit"] == 3
+        return [
+            {
+                "id": uuid4(),
+                "user_id": None,
+                "initial_search_id": search_id,
+                "result_position": 1,
+                "title": "Candidate One",
+                "merchant_name": "Shop One",
+                "product_url": "https://shop.example.com/one",
+                "product_image_url": "https://img.example.com/one.jpg",
+                "thumbnail_url": "https://img.example.com/one-thumb.jpg",
+                "current_price_amount": None,
+                "currency_code": None,
+                "in_stock": True,
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            }
+        ]
+
+    monkeypatch.setattr("app.services.serpapi.serpservice.ensure_pool", fake_ensure_pool)
+    monkeypatch.setattr(
+        "app.services.serpapi.serpservice.product_searches_repo.list_product_candidates",
+        fake_list_product_candidates,
+    )
+
+    result = await list_candidates(search_id)
+
+    assert len(result) == 1
+    assert result[0]["title"] == "Candidate One"
+    assert result[0]["result_position"] == 1

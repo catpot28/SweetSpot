@@ -102,3 +102,47 @@ async def test_create_wishlist_item_links_to_candidate():
     _, args = pool.calls[0]
     assert args[0] is None
     assert args[1] == candidate_id
+
+
+@pytest.mark.asyncio
+async def test_list_product_candidates_orders_by_position_and_limit():
+    pool = DummyPool(None)
+
+    async def fetch(query, *args):
+        pool.calls.append((query, args))
+        return []
+
+    pool.fetch = fetch
+    search_id = uuid4()
+
+    result = await product_searches_repo.list_product_candidates(
+        pool,
+        initial_search_id=search_id,
+        limit=3,
+    )
+
+    assert result == []
+    _, args = pool.calls[0]
+    assert args[0] == search_id
+    assert args[1] == 3
+
+
+@pytest.mark.asyncio
+async def test_get_product_candidate_queries_by_id():
+    pool = DummyPool(None)
+
+    async def fetchrow(query, *args):
+        pool.calls.append((query, args))
+        return None
+
+    pool.fetchrow = fetchrow
+    candidate_id = uuid4()
+
+    result = await product_searches_repo.get_product_candidate(
+        pool,
+        product_candidate_id=candidate_id,
+    )
+
+    assert result is None
+    _, args = pool.calls[0]
+    assert args[0] == candidate_id

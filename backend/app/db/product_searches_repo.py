@@ -141,3 +141,65 @@ async def create_wishlist_item(
         product_candidate_id,
         note,
     )
+
+
+async def list_product_candidates(
+    pool: asyncpg.Pool,
+    *,
+    initial_search_id: UUID,
+    limit: int = 3,
+) -> list[asyncpg.Record]:
+    return await pool.fetch(
+        """
+        SELECT
+            id,
+            user_id,
+            initial_search_id,
+            result_position,
+            title,
+            merchant_name,
+            product_url,
+            product_image_url,
+            thumbnail_url,
+            current_price_amount,
+            currency_code,
+            in_stock,
+            created_at,
+            updated_at
+        FROM product_candidates
+        WHERE initial_search_id = $1
+        ORDER BY result_position ASC
+        LIMIT $2
+        """,
+        initial_search_id,
+        limit,
+    )
+
+
+async def get_product_candidate(
+    pool: asyncpg.Pool,
+    *,
+    product_candidate_id: UUID,
+) -> asyncpg.Record | None:
+    return await pool.fetchrow(
+        """
+        SELECT
+            id,
+            user_id,
+            initial_search_id,
+            result_position,
+            title,
+            merchant_name,
+            product_url,
+            product_image_url,
+            thumbnail_url,
+            current_price_amount,
+            currency_code,
+            in_stock,
+            created_at,
+            updated_at
+        FROM product_candidates
+        WHERE id = $1
+        """,
+        product_candidate_id,
+    )

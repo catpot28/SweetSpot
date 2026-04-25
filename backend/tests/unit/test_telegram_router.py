@@ -33,8 +33,7 @@ async def test_webhook_with_photo_calls_service_and_sends_reply(monkeypatch):
                     "link": "https://shop.example.com",
                 }
             ],
-            product_candidate_id=uuid4(),
-            wishlist_item_id=uuid4(),
+            candidate_ids=[uuid4(), uuid4(), uuid4()],
         )
 
     async def fake_send_message(chat_id, text):

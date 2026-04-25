@@ -4,6 +4,7 @@ import logging
 import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from uuid import UUID
 
 import httpx
 
@@ -28,7 +29,7 @@ _CURRENCY_SYMBOLS = {
 async def search_products(image_url: str) -> ProductSearchResult:
     """
     Search Google Lens via SerpApi for product matches.
-    Persists the search metadata and one primary candidate linked to wishlist_items.
+    Persists the search metadata and top candidates for later selection.
     """
     params = {
         "engine": "google_lens",
@@ -70,43 +71,36 @@ async def search_products(image_url: str) -> ProductSearchResult:
     )
     log.info("Persisted product search id=%s", product_search_id)
 
-    product_candidate_id = None
-    wishlist_item_id = None
-    primary_candidate = _select_primary_candidate(matches)
-    if primary_candidate is not None:
-        product_candidate_id = await product_searches_repo.create_product_candidate(
+    candidate_ids: list[UUID] = []
+    for candidate in _select_top_candidates(matches, limit=3):
+        candidate_id = await product_searches_repo.create_product_candidate(
             pool,
             initial_search_id=product_search_id,
-            result_position=primary_candidate.result_position,
-            title=primary_candidate.title,
-            product_url=primary_candidate.product_url,
-            merchant_name=primary_candidate.merchant_name,
-            product_image_url=primary_candidate.product_image_url,
-            thumbnail_url=primary_candidate.thumbnail_url,
-            current_price_amount=primary_candidate.current_price_amount,
-            currency_code=primary_candidate.currency_code,
-            in_stock=primary_candidate.in_stock,
+            result_position=candidate.result_position,
+            title=candidate.title,
+            product_url=candidate.product_url,
+            merchant_name=candidate.merchant_name,
+            product_image_url=candidate.product_image_url,
+            thumbnail_url=candidate.thumbnail_url,
+            current_price_amount=candidate.current_price_amount,
+            currency_code=candidate.currency_code,
+            in_stock=candidate.in_stock,
         )
-        wishlist_item_id = await product_searches_repo.create_wishlist_item(
-            pool,
-            product_candidate_id=product_candidate_id,
-        )
+        candidate_ids.append(candidate_id)
 
     top_matches = matches[:3]
     log.info(
-        "SerpApi returned %d matches, persisted search_id=%s candidate_id=%s wishlist_item_id=%s top 3=%s",
+        "SerpApi returned %d matches, persisted search_id=%s candidate_ids=%s top 3=%s",
         len(matches),
         product_search_id,
-        product_candidate_id,
-        wishlist_item_id,
+        candidate_ids,
         [m.get("title") for m in top_matches],
     )
     return ProductSearchResult(
         search_image_id=search_image_id,
         product_search_id=product_search_id,
         matches=top_matches,
-        product_candidate_id=product_candidate_id,
-        wishlist_item_id=wishlist_item_id,
+        candidate_ids=candidate_ids,
     )
 
 
@@ -120,7 +114,12 @@ def _extract_matches(data: dict[str, Any]) -> list[dict[str, Any]]:
     return [match for match in matches if isinstance(match, dict)]
 
 
-def _select_primary_candidate(matches: list[dict[str, Any]]) -> PersistableCandidate | None:
+def _select_top_candidates(
+    matches: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> list[PersistableCandidate]:
+    selected: list[PersistableCandidate] = []
     for index, match in enumerate(matches, start=1):
         title = _as_non_empty_string(match.get("title"))
         product_url = _extract_product_url(match)
@@ -128,20 +127,53 @@ def _select_primary_candidate(matches: list[dict[str, Any]]) -> PersistableCandi
             continue
 
         price_amount, currency_code = _extract_price(match)
-        return PersistableCandidate(
-            result_position=index,
-            title=title,
-            product_url=product_url,
-            merchant_name=_as_non_empty_string(
-                match.get("source") or match.get("merchant_name") or match.get("merchant")
-            ),
-            product_image_url=_extract_image_url(match),
-            thumbnail_url=_as_non_empty_string(match.get("thumbnail")),
-            current_price_amount=price_amount,
-            currency_code=currency_code,
-            in_stock=_extract_in_stock(match),
+        selected.append(
+            PersistableCandidate(
+                result_position=index,
+                title=title,
+                product_url=product_url,
+                merchant_name=_as_non_empty_string(
+                    match.get("source") or match.get("merchant_name") or match.get("merchant")
+                ),
+                product_image_url=_extract_image_url(match),
+                thumbnail_url=_as_non_empty_string(match.get("thumbnail")),
+                current_price_amount=price_amount,
+                currency_code=currency_code,
+                in_stock=_extract_in_stock(match),
+            )
         )
-    return None
+        if len(selected) >= limit:
+            break
+    return selected
+
+
+async def list_candidates(search_id: UUID, limit: int = 3) -> list[dict[str, Any]]:
+    pool = await ensure_pool()
+    rows = await product_searches_repo.list_product_candidates(
+        pool,
+        initial_search_id=search_id,
+        limit=limit,
+    )
+    return [_record_to_candidate(row) for row in rows]
+
+
+def _record_to_candidate(row: Any) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "user_id": row["user_id"],
+        "initial_search_id": row["initial_search_id"],
+        "result_position": row["result_position"],
+        "title": row["title"],
+        "merchant_name": row["merchant_name"],
+        "product_url": row["product_url"],
+        "product_image_url": row["product_image_url"],
+        "thumbnail_url": row["thumbnail_url"],
+        "current_price_amount": row["current_price_amount"],
+        "currency_code": row["currency_code"],
+        "in_stock": row["in_stock"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
 
 
 def _extract_product_url(match: dict[str, Any]) -> str | None:

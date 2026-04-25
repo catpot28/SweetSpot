@@ -1,17 +1,13 @@
 # api/lens/
 
-Product capture endpoint.
+Persisted search candidate retrieval.
 
 ## Endpoint
 
-- `POST /lens/scan` — accepts an image (multipart upload **or** a URL) and returns 3-tier product matches plus an affordability verdict.
+- `GET /lens/searches/{search_id}/candidates` - returns the top persisted candidates for a stored product search.
 
 ## Pipeline
 
-1. Upload bytes to ImgBB (`services/imgbb`) → public URL.
-2. Call SerpApi Google Lens (`services/serpapi`) with `country=nl`, `search_type=products`.
-3. Group results into `budget` / `match` / `premium` tiers by price.
-4. For each tier, ask `services/sweetspot` whether the user can afford it now.
-5. Auto-save the `match` tier to the user's wishlist via `db/wishlist_repo` (price anchor).
-
-Response shape mirrors `Product[]` in the frontend [../../../../frontend/src/types/](../../../../frontend/src/types/).
+1. A prior search persists `product_candidates` linked to `product_searches`.
+2. This endpoint reads candidates back ordered by `result_position`.
+3. v1 returns the first 3 candidates; ranking rules can evolve later.
