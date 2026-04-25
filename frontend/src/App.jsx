@@ -11,27 +11,35 @@ import { api } from './lib/api'
 
 function App() {
   const [screen, setScreen] = useState('home')
-  const [balance, setBalance] = useState(null)
   // Captured by FindItem, consumed by Scanning, then cleared.
   const [selectedFile, setSelectedFile] = useState(null)
   // Set after /lens/scan returns; passed to Candidates so it can fetch real results.
   const [searchId, setSearchId] = useState(null)
+  // Real wishlist rows from GET /wishlist; refreshed every time we land on home.
+  const [wishlist, setWishlist] = useState([])
 
-  // Refresh balance whenever we land back on the home screen — including
-  // right after a purchase, so the new (lower) figure shows up.
   useEffect(() => {
     if (screen !== 'home') return
-    api.getBalance()
-      .then((b) => setBalance(parseFloat(b.value)))
-      .catch((e) => console.error('balance fetch failed:', e))
+    api.getWishlist()
+      .then(setWishlist)
+      .catch((e) => console.error('wishlist fetch failed:', e))
   }, [screen])
+
+  // Until /wishlist supports filtered queries, derive these counts client-side.
+  // `bought` has no backend concept yet — leave at 0 until that endpoint lands.
+  const homeStats = {
+    bought: 0,
+    onDiscount: wishlist.filter((i) => i.sweet_spot || i.on_discount).length,
+    allTime: wishlist.length,
+  }
 
   return (
     <>
       {screen === 'home' && (
         <HomeScreen
           onNavigate={setScreen}
-          totalSaved={balance ?? 847}
+          itemCount={wishlist.length}
+          stats={homeStats}
         />
       )}
       {screen === 'find' && (
