@@ -46,38 +46,30 @@ class FinancialSummary(BaseModel):
     days_analyzed: int
 
 
-class SearchResponse(BaseModel):
-    prices: list[float]
-    matches: list[ProductMatch]
-    financials: FinancialSummary
-
-
-class ScoreRequest(BaseModel):
-    prices: list[float]
-
-
 class ScoreBreakdown(BaseModel):
     price_position: int
     headroom: int
     promotion: int
 
 
-class ScoreResponse(BaseModel):
+class SearchResponse(BaseModel):
     sweetspot: bool
     score: int
     reasoning: str
     item_price: float
     disposable: float
     score_breakdown: ScoreBreakdown
+    financials: FinancialSummary
+    matches: list[ProductMatch]
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Endpoint
 # ---------------------------------------------------------------------------
 
 @router.post("/search", response_model=SearchResponse)
 async def search(body: SearchRequest, client: ClientDep) -> SearchResponse:
-    """Search SerpApi by image and return matches + user financial summary."""
+    """Search SerpApi by image, score against user finances, return full result."""
     log.info("sweetspot/search: image_url=%s", body.image_url)
     try:
         matches = await fetch_products(body.image_url)
@@ -85,6 +77,11 @@ async def search(body: SearchRequest, client: ClientDep) -> SearchResponse:
         log.exception("SerpApi search failed")
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     log.info("sweetspot/search: %d matches", len(matches))
+
+    prices = [Decimal(str(p)) for m in matches if (p := _parse_price(m)) is not None]
+    log.info("sweetspot/search: prices=%s", [float(p) for p in prices])
+    if not prices:
+        raise HTTPException(status_code=422, detail="No prices found — try a clearer product photo.")
 
     balance_data = await ops.get_balance(client)
     balance = Decimal(str(balance_data["value"]))
@@ -95,11 +92,16 @@ async def search(body: SearchRequest, client: ClientDep) -> SearchResponse:
     log.info("sweetspot/search: fixed_monthly=%.2f variable_monthly=%.2f disposable=%.2f",
              summary.fixed_monthly, summary.variable_monthly, summary.disposable)
 
-    prices = [p for m in matches if (p := _parse_price(m)) is not None]
+    result = sweetspot.score(summary, prices)
+    log.info("sweetspot/search: sweetspot=%s score=%d", result.sweetspot, result.score)
 
     return SearchResponse(
-        prices=prices,
-        matches=[_to_match(m) for m in matches],
+        sweetspot=result.sweetspot,
+        score=result.score,
+        reasoning=result.reasoning,
+        item_price=float(result.item_price),
+        disposable=float(result.disposable),
+        score_breakdown=ScoreBreakdown(**result.score_breakdown),
         financials=FinancialSummary(
             balance=float(summary.balance),
             fixed_monthly=float(summary.fixed_monthly),
@@ -108,35 +110,7 @@ async def search(body: SearchRequest, client: ClientDep) -> SearchResponse:
             transaction_count=summary.transaction_count,
             days_analyzed=summary.days_analyzed,
         ),
-    )
-
-
-@router.post("/score", response_model=ScoreResponse)
-async def score(body: ScoreRequest, client: ClientDep) -> ScoreResponse:
-    """Score a purchase using prices from /sweetspot/search."""
-    if not body.prices:
-        raise HTTPException(status_code=422, detail="prices list must not be empty")
-
-    balance_data = await ops.get_balance(client)
-    balance = Decimal(str(balance_data["value"]))
-    transactions = await ops.list_transactions(client, count=200)
-    log.info("sweetspot/score: balance=%.2f transactions=%d", balance, len(transactions))
-
-    summary = sweetspot.build_spending_summary(balance, transactions)
-    log.info("sweetspot/score: fixed_monthly=%.2f variable_monthly=%.2f disposable=%.2f",
-             summary.fixed_monthly, summary.variable_monthly, summary.disposable)
-
-    prices = [Decimal(str(p)) for p in body.prices]
-    result = sweetspot.score(summary, prices)
-    log.info("sweetspot/score: sweetspot=%s score=%d", result.sweetspot, result.score)
-
-    return ScoreResponse(
-        sweetspot=result.sweetspot,
-        score=result.score,
-        reasoning=result.reasoning,
-        item_price=float(result.item_price),
-        disposable=float(result.disposable),
-        score_breakdown=ScoreBreakdown(**result.score_breakdown),
+        matches=[_to_match(m) for m in matches],
     )
 
 
@@ -145,7 +119,6 @@ async def score(body: ScoreRequest, client: ClientDep) -> ScoreResponse:
 # ---------------------------------------------------------------------------
 
 def _parse_price(m: dict[str, Any]) -> float | None:
-    """Extract a numeric price from a match — prefers extracted_price, falls back to parsing the price string."""
     ep = m.get("extracted_price")
     if isinstance(ep, (int, float)) and not isinstance(ep, bool) and ep > 0:
         return float(ep)
@@ -153,10 +126,10 @@ def _parse_price(m: dict[str, Any]) -> float | None:
     if isinstance(raw, dict):
         raw = raw.get("value") or raw.get("extracted_value")
     if raw:
-        match = re.search(r"[\d]+(?:[.,]\d+)?", str(raw).replace(",", "."))
+        match = re.search(r"\d+(?:[.,]\d+)?", str(raw).replace(",", "."))
         if match:
             try:
-                return float(Decimal(match.group().replace(",", ".")))
+                return float(Decimal(match.group()))
             except InvalidOperation:
                 pass
     return None
