@@ -6,6 +6,7 @@ cryptography         # RSA request signing for BUNQ
 fastapi              # web framework
 uvicorn[standard]    # ASGI server (with watchfiles + uvloop)
 pydantic-settings    # env-var loading in app/core/config.py
+asyncpg              # async Postgres driver for Supabase
 
 # Added as modules come online:
 #   supabase              # Supabase Python client
