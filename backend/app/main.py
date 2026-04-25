@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.bunq.router import install_error_handlers, router as bunq_router
+from app.api.webhooks.router import router as webhooks_router
 from app.db.client import close_pool, init_pool
 
 
@@ -30,6 +31,7 @@ app.add_middleware(
 )
 
 app.include_router(bunq_router)
+app.include_router(webhooks_router)
 install_error_handlers(app)
 
 

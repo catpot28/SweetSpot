@@ -11,9 +11,10 @@ Routes that wrap BUNQ's REST API, per [../../../../BUNQ_INTEGRATION.md](../../..
 | GET  | `/bunq/transactions/{user_id}` | **Built** | `GET /v1/user/{uid}/monetary-account/{aid}/payment` | Spending history for sweet-spot buffer calc |
 | POST | `/bunq/payments/draft` | **Built** | `POST /v1/user/{uid}/monetary-account/{aid}/draft-payment` | Pending payment for "Buy it" preview |
 | POST | `/bunq/payments/{draft_id}/confirm` | **Built** | `PUT .../draft-payment/{id}` (status=ACCEPTED) | Executes the draft |
+| POST | `/bunq/users/{user_id}/webhook` | **Built** | `POST /v1/user/{uid}/notification-filter-url` | Tells BUNQ to push events to our `/webhooks/bunq`. Body `{"url": "..."}` is optional — auto-falls-back to `https://${RAILWAY_PUBLIC_DOMAIN}/webhooks/bunq` |
 | POST | `/bunq/users` | Pending | full handshake + register webhook | Needs Supabase to store one row per user |
 
-Plus the BUNQ → us notification receiver — lives under [../webhooks/](../webhooks/), registered by `POST /bunq/users` once that exists.
+The BUNQ → us notification receiver lives under [../webhooks/](../webhooks/) (see [../webhooks/README.md](../webhooks/README.md)).
 
 ## Implementation notes
 

@@ -1,6 +1,7 @@
 """HTTP routes wrapping BUNQ. Each handler delegates to services/bunq/operations.py."""
 from __future__ import annotations
 
+import os
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -66,6 +67,34 @@ async def create_draft_payment(
 @router.post("/payments/{draft_id}/confirm", status_code=204)
 async def confirm_draft_payment(draft_id: int, client: ClientDep) -> None:
     await ops.confirm_draft_payment(client, draft_id)
+
+
+@router.post("/users/{user_id}/webhook", status_code=204)
+async def register_webhook(
+    user_id: int,
+    client: ClientDep,
+    body: dict[str, Any] | None = None,
+) -> None:
+    """
+    Tell BUNQ to POST every transaction to our `/webhooks/bunq` endpoint.
+
+    Body: `{"url": "..."}` — the public URL to register. If omitted, falls
+    back to `https://${RAILWAY_PUBLIC_DOMAIN}/webhooks/bunq` so on Railway
+    you can just `POST` with no body.
+    """
+    _check_user(client, user_id)
+    url = (body or {}).get("url") or _detect_railway_webhook_url()
+    if not url:
+        raise HTTPException(
+            status_code=400,
+            detail="no url in body and RAILWAY_PUBLIC_DOMAIN env var is not set",
+        )
+    await ops.register_notification_webhook(client, url=url)
+
+
+def _detect_railway_webhook_url() -> str | None:
+    domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+    return f"https://{domain}/webhooks/bunq" if domain else None
 
 
 # Surface upstream BUNQ errors as 502 instead of a generic 500 so it's clear
