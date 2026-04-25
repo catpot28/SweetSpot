@@ -10,7 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.bunq.router import install_error_handlers, router as bunq_router
 from app.api.lens.router import router as lens_router
-from app.api.sweetspot.router import router as sweetspot_router
 from app.api.telegram.router import router as telegram_router
 from app.api.wishlist.router import router as wishlist_router
 from app.core.config import settings
@@ -61,7 +60,6 @@ app.add_middleware(
 
 app.include_router(bunq_router)
 app.include_router(lens_router)
-app.include_router(sweetspot_router)
 app.include_router(telegram_router)
 app.include_router(wishlist_router)
 install_error_handlers(app)

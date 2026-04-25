@@ -61,8 +61,6 @@ async def create_product_search(
             status
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        ON CONFLICT (serpapi_search_id) DO UPDATE
-            SET status = EXCLUDED.status
         RETURNING id
         """,
         user_id,
@@ -110,16 +108,6 @@ async def create_product_candidate(
             in_stock
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        ON CONFLICT (initial_search_id, result_position) DO UPDATE SET
-            title                = EXCLUDED.title,
-            merchant_name        = EXCLUDED.merchant_name,
-            product_url          = EXCLUDED.product_url,
-            product_image_url    = EXCLUDED.product_image_url,
-            thumbnail_url        = EXCLUDED.thumbnail_url,
-            current_price_amount = EXCLUDED.current_price_amount,
-            currency_code        = EXCLUDED.currency_code,
-            in_stock             = EXCLUDED.in_stock,
-            updated_at           = now()
         RETURNING id
         """,
         user_id,
