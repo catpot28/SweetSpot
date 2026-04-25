@@ -8,11 +8,26 @@ const PURCHASE_AMOUNT_EUR = "1.00";
 const PURCHASE_COUNTERPARTY = "sugardaddy@bunq.com";
 const DEFAULT_PURCHASE_DESCRIPTION = "Sony WH-1000XM5";
 
-const PRICE_HISTORY = [
-  { month: "Feb", value: 349 },
-  { month: "Mar", value: 329 },
-  { month: "Apr", value: 299 },
-];
+// Generate a 3-point ease-out "price drop" history ending at the current price.
+// Demo-only — no real historical data; the curve falls fast then flattens, which
+// looks like a typical product price coming down to a deal.
+const HISTORY_FACTORS = [1.20, 1.08, 1.00];
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function computePriceHistory(currentPrice) {
+  const safe = Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : 299;
+  const now = new Date();
+  return HISTORY_FACTORS.map((factor, i) => ({
+    month: MONTH_NAMES[(now.getMonth() - (HISTORY_FACTORS.length - 1 - i) + 12) % 12],
+    value: Math.round(safe * factor),
+  }));
+}
+
+function parsePriceNumber(priceText) {
+  if (typeof priceText !== "string") return null;
+  const match = priceText.replace(",", ".").match(/\d+(?:\.\d+)?/);
+  return match ? parseFloat(match[0]) : null;
+}
 
 const OTHER_STORES = [
   { store: "bol.com", price: "\u20ac319", inStock: true },
@@ -461,7 +476,7 @@ export default function ProductDetail({ onNavigate, product }) {
           {divider}
 
           <div style={{ ...fadeIn(190), marginBottom: 22 }}>
-            <PriceChart data={PRICE_HISTORY} />
+            <PriceChart data={computePriceHistory(parsePriceNumber(detailProduct.price))} />
           </div>
 
           {divider}
