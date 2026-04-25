@@ -35,12 +35,18 @@ def build_spending_summary(balance: Decimal, transactions: list[dict]) -> Spendi
     """
     Parse BUNQ payment history into monthly fixed + variable cost estimates.
 
-    Looks for #fixed / #variable tags in payment descriptions and normalises
-    the totals over the date span of the transactions.
+    Fixed costs: grouped by description and averaged — each unique recurring
+    expense contributes its average amount regardless of how many months of
+    history exist. This handles seed data where all transactions share the
+    same timestamp.
+
+    Variable costs: summed and divided by the number of months in the
+    transaction history (minimum 1).
     """
     from datetime import datetime
 
-    fixed_total = Decimal(0)
+    # description (without tag) -> list of amounts seen
+    fixed_by_desc: dict[str, list[Decimal]] = {}
     variable_total = Decimal(0)
     timestamps: list[datetime] = []
 
@@ -58,14 +64,19 @@ def build_spending_summary(balance: Decimal, transactions: list[dict]) -> Spendi
                 pass
 
         if _FIXED_TAG in description:
-            fixed_total += amount
+            key = description.replace(_FIXED_TAG, "").strip().lower()
+            fixed_by_desc.setdefault(key, []).append(amount)
         elif _VARIABLE_TAG in description:
             variable_total += amount
 
     days_span = max(1, (max(timestamps) - min(timestamps)).days) if len(timestamps) >= 2 else 30
     months = max(1.0, days_span / 30.44)
 
-    fixed_monthly = (fixed_total / Decimal(str(months))).quantize(Decimal("0.01"))
+    # Average per unique fixed cost — correct even when the same expense repeats across months
+    fixed_monthly = sum(
+        sum(amounts) / len(amounts) for amounts in fixed_by_desc.values()
+    ).quantize(Decimal("0.01"))
+
     variable_monthly = (variable_total / Decimal(str(months))).quantize(Decimal("0.01"))
 
     return SpendingSummary(
