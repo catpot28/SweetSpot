@@ -61,6 +61,7 @@ async def create_product_search(
             status
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT (serpapi_search_id) DO UPDATE SET status = EXCLUDED.status
         RETURNING id
         """,
         user_id,
@@ -88,8 +89,10 @@ async def create_product_candidate(
     merchant_name: str | None = None,
     product_image_url: str | None = None,
     thumbnail_url: str | None = None,
+    current_price_text: str | None = None,
     current_price_amount: Decimal | None = None,
     currency_code: str | None = None,
+    stock_status: str | None = None,
     in_stock: bool | None = None,
 ) -> UUID:
     return await pool.fetchval(
@@ -103,11 +106,13 @@ async def create_product_candidate(
             product_url,
             product_image_url,
             thumbnail_url,
+            current_price_text,
             current_price_amount,
             currency_code,
+            stock_status,
             in_stock
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING id
         """,
         user_id,
@@ -118,8 +123,10 @@ async def create_product_candidate(
         product_url,
         product_image_url,
         thumbnail_url,
+        current_price_text,
         current_price_amount,
         currency_code,
+        stock_status,
         in_stock,
     )
 
@@ -130,16 +137,29 @@ async def create_wishlist_item(
     product_candidate_id: UUID,
     user_id: UUID | None = None,
     note: str | None = None,
+    on_discount: bool | None = None,
+    sweet_spot: bool | None = None,
+    reasoning: str | None = None,
 ) -> UUID:
     return await pool.fetchval(
         """
-        INSERT INTO wishlist_items (user_id, product_candidate_id, note)
-        VALUES ($1, $2, $3)
+        INSERT INTO wishlist_items (
+            user_id,
+            product_candidate_id,
+            note,
+            on_discount,
+            sweet_spot,
+            reasoning
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id
         """,
         user_id,
         product_candidate_id,
         note,
+        on_discount,
+        sweet_spot,
+        reasoning,
     )
 
 
@@ -161,8 +181,10 @@ async def list_product_candidates(
             product_url,
             product_image_url,
             thumbnail_url,
+            current_price_text,
             current_price_amount,
             currency_code,
+            stock_status,
             in_stock,
             created_at,
             updated_at
@@ -193,8 +215,10 @@ async def get_product_candidate(
             product_url,
             product_image_url,
             thumbnail_url,
+            current_price_text,
             current_price_amount,
             currency_code,
+            stock_status,
             in_stock,
             created_at,
             updated_at
@@ -202,4 +226,40 @@ async def get_product_candidate(
         WHERE id = $1
         """,
         product_candidate_id,
+    )
+
+
+async def list_wishlist_items(pool: asyncpg.Pool) -> list[asyncpg.Record]:
+    return await pool.fetch(
+        """
+        SELECT
+            wi.id AS wishlist_item_id,
+            wi.user_id AS wishlist_user_id,
+            wi.product_candidate_id,
+            wi.note,
+            wi.on_discount,
+            wi.sweet_spot,
+            wi.reasoning,
+            wi.added_at,
+            pc.id,
+            pc.user_id,
+            pc.initial_search_id,
+            pc.result_position,
+            pc.title,
+            pc.merchant_name,
+            pc.product_url,
+            pc.product_image_url,
+            pc.thumbnail_url,
+            pc.current_price_text,
+            pc.current_price_amount,
+            pc.currency_code,
+            pc.stock_status,
+            pc.in_stock,
+            pc.created_at,
+            pc.updated_at
+        FROM wishlist_items wi
+        JOIN product_candidates pc
+          ON pc.id = wi.product_candidate_id
+        ORDER BY wi.added_at DESC
+        """
     )

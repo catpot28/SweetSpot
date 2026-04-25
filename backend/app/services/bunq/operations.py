@@ -73,6 +73,22 @@ async def confirm_draft_payment(client: BunqClient, draft_id: int) -> None:
     )
 
 
+async def topup_by_request_inquiry(client: BunqClient, *, amount_eur: str) -> int:
+    """Request money from sugardaddy@bunq.com. Sandbox auto-accepts instantly."""
+    data = await client.request(
+        "POST",
+        f"/v1/user/{client.state.user_id}"
+        f"/monetary-account/{client.state.monetary_account_id}/request-inquiry",
+        {
+            "amount_inquired": {"value": amount_eur, "currency": "EUR"},
+            "counterparty_alias": {"type": "EMAIL", "value": "sugardaddy@bunq.com"},
+            "description": "SweetSpot sandbox top-up",
+            "allow_bunqme": True,
+        },
+    )
+    return _pick(data["Response"], "Id")["id"]
+
+
 async def register_notification_webhook(client: BunqClient, *, url: str) -> None:
     await client.request(
         "POST",

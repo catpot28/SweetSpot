@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -25,6 +25,7 @@ class DraftPaymentBody(BaseModel):
     amount_eur: str
     counterparty_email: str
     description: str
+    category: Literal["fixed", "variable", "other"] = "other"
 
 
 class DraftPaymentResponse(BaseModel):
@@ -51,6 +52,15 @@ async def get_transactions(
     return await ops.list_transactions(client, count=count)
 
 
+class TopupBody(BaseModel):
+    amount_eur: str
+
+
+@router.post("/topup", status_code=204)
+async def topup(body: TopupBody, client: ClientDep) -> None:
+    await ops.topup_by_request_inquiry(client, amount_eur=body.amount_eur)
+
+
 @router.post("/payments/draft", response_model=DraftPaymentResponse)
 async def create_draft_payment(
     body: DraftPaymentBody, client: ClientDep
@@ -59,7 +69,7 @@ async def create_draft_payment(
         client,
         amount_eur=body.amount_eur,
         counterparty_email=body.counterparty_email,
-        description=body.description,
+        description=f"{body.description} #{body.category}",
     )
     return DraftPaymentResponse(draft_id=draft_id)
 
