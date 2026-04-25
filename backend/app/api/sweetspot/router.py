@@ -41,14 +41,6 @@ class FinancialSummary(BaseModel):
     days_analyzed: int
 
 
-class SearchResponse(BaseModel):
-    matches: list[ProductMatch]
-    financials: FinancialSummary
-
-
-class ScoreRequest(BaseModel):
-    prices: list[float]
-
 
 class ScoreBreakdown(BaseModel):
     price_position: int
@@ -56,42 +48,15 @@ class ScoreBreakdown(BaseModel):
     promotion: int
 
 
-class ScoreResponse(BaseModel):
+class SearchResponse(BaseModel):
     sweetspot: bool
     score: int
     reasoning: str
     item_price: float
     disposable: float
     score_breakdown: ScoreBreakdown
-
-
-@router.post("/score", response_model=ScoreResponse)
-async def score(body: ScoreRequest, client: ClientDep) -> ScoreResponse:
-    """Score a purchase using prices from /sweetspot/search against the user's finances."""
-    if not body.prices:
-        raise HTTPException(status_code=422, detail="prices list must not be empty")
-
-    balance_data = await ops.get_balance(client)
-    balance = Decimal(str(balance_data["value"]))
-    transactions = await ops.list_transactions(client, count=200)
-    log.info("score: balance=%.2f transactions=%d", balance, len(transactions))
-
-    summary = sweetspot.build_spending_summary(balance, transactions)
-    log.info("score: fixed_monthly=%.2f variable_monthly=%.2f disposable=%.2f",
-             summary.fixed_monthly, summary.variable_monthly, summary.disposable)
-
-    prices = [Decimal(str(p)) for p in body.prices]
-    result = sweetspot.score(summary, prices)
-    log.info("score: sweetspot=%s score=%d tier=%s", result.sweetspot, result.score, result.tier)
-
-    return ScoreResponse(
-        sweetspot=result.sweetspot,
-        score=result.score,
-        reasoning=result.reasoning,
-        item_price=float(result.item_price),
-        disposable=float(result.disposable),
-        score_breakdown=ScoreBreakdown(**result.score_breakdown),
-    )
+    financials: FinancialSummary
+    matches: list[ProductMatch]
 
 
 @router.post("/search", response_model=SearchResponse)
@@ -105,21 +70,33 @@ async def search(body: SearchRequest, client: ClientDep) -> SearchResponse:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     log.info("sweetspot/search: %d matches", len(matches))
 
+    prices = [Decimal(str(m["extracted_price"])) for m in matches
+              if isinstance(m.get("extracted_price"), (int, float)) and m["extracted_price"] > 0]
+    log.info("sweetspot/search: parsed prices=%s", [float(p) for p in prices])
+    if not prices:
+        raise HTTPException(status_code=422, detail="No prices found — try a clearer product photo.")
+
     # 2. BUNQ balance + transactions
     balance_data = await ops.get_balance(client)
     balance = Decimal(str(balance_data["value"]))
     transactions = await ops.list_transactions(client, count=200)
     log.info("sweetspot/search: balance=%.2f transactions=%d", balance, len(transactions))
 
-    # 3. Identify fixed and variable costs from transaction tags
+    # 3. Spending summary + score
     summary = sweetspot.build_spending_summary(balance, transactions)
-    log.info(
-        "sweetspot/search: fixed_monthly=%.2f variable_monthly=%.2f disposable=%.2f",
-        summary.fixed_monthly, summary.variable_monthly, summary.disposable,
-    )
+    log.info("sweetspot/search: fixed_monthly=%.2f variable_monthly=%.2f disposable=%.2f",
+             summary.fixed_monthly, summary.variable_monthly, summary.disposable)
+
+    result = sweetspot.score(summary, prices)
+    log.info("sweetspot/search: sweetspot=%s score=%d", result.sweetspot, result.score)
 
     return SearchResponse(
-        matches=[_to_match(m) for m in matches],
+        sweetspot=result.sweetspot,
+        score=result.score,
+        reasoning=result.reasoning,
+        item_price=float(result.item_price),
+        disposable=float(result.disposable),
+        score_breakdown=ScoreBreakdown(**result.score_breakdown),
         financials=FinancialSummary(
             balance=float(summary.balance),
             fixed_monthly=float(summary.fixed_monthly),
@@ -128,6 +105,7 @@ async def search(body: SearchRequest, client: ClientDep) -> SearchResponse:
             transaction_count=summary.transaction_count,
             days_analyzed=summary.days_analyzed,
         ),
+        matches=[_to_match(m) for m in matches],
     )
 
 
