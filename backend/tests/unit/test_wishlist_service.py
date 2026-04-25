@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.services.wishlist import list_wishlist_items
+from app.services.wishlist import add_candidate_to_wishlist, list_wishlist_items
 
 
 @pytest.mark.asyncio
@@ -26,10 +26,14 @@ async def test_list_wishlist_items_maps_joined_rows(monkeypatch):
                 "wishlist_user_id": None,
                 "product_candidate_id": candidate_id,
                 "note": "saved",
+                "current_price_text": "$9.99",
+                "currency_code": "USD",
+                "stock_status": "In stock",
                 "on_discount": True,
                 "sweet_spot": False,
                 "reasoning": "Wait for next week",
                 "added_at": timestamp,
+                "purchased_at": None,
                 "id": candidate_id,
                 "user_id": None,
                 "initial_search_id": search_id,
@@ -39,10 +43,10 @@ async def test_list_wishlist_items_maps_joined_rows(monkeypatch):
                 "product_url": "https://shop.example.com/item",
                 "product_image_url": "https://img.example.com/item.jpg",
                 "thumbnail_url": "https://img.example.com/item-thumb.jpg",
-                "current_price_text": "$10.99",
+                "candidate_current_price_text": "$10.99",
                 "current_price_amount": Decimal("10.99"),
-                "currency_code": "USD",
-                "stock_status": "In stock",
+                "candidate_currency_code": "USD",
+                "candidate_stock_status": "In stock",
                 "in_stock": True,
                 "created_at": timestamp,
                 "updated_at": timestamp,
@@ -59,6 +63,9 @@ async def test_list_wishlist_items_maps_joined_rows(monkeypatch):
 
     assert len(result) == 1
     assert result[0]["wishlist_item_id"] == wishlist_item_id
+    assert result[0]["current_price_text"] == "$9.99"
+    assert result[0]["currency_code"] == "USD"
+    assert result[0]["stock_status"] == "In stock"
     assert result[0]["on_discount"] is True
     assert result[0]["sweet_spot"] is False
     assert result[0]["reasoning"] == "Wait for next week"
@@ -66,6 +73,45 @@ async def test_list_wishlist_items_maps_joined_rows(monkeypatch):
     assert result[0]["candidate"]["current_price_text"] == "$10.99"
     assert result[0]["candidate"]["current_price_amount"] == Decimal("10.99")
     assert result[0]["candidate"]["stock_status"] == "In stock"
+
+
+@pytest.mark.asyncio
+async def test_add_candidate_to_wishlist_snapshots_candidate_pricing(monkeypatch):
+    candidate_id = uuid4()
+    wishlist_item_id = uuid4()
+
+    async def fake_ensure_pool():
+        return object()
+
+    async def fake_get_product_candidate(pool, *, product_candidate_id):
+        assert product_candidate_id == candidate_id
+        return {
+            "current_price_text": "$10.99",
+            "currency_code": "USD",
+            "stock_status": "In stock",
+        }
+
+    async def fake_create_wishlist_item(pool, **kwargs):
+        assert kwargs["product_candidate_id"] == candidate_id
+        assert kwargs["current_price_text"] == "$10.99"
+        assert kwargs["currency_code"] == "USD"
+        assert kwargs["stock_status"] == "In stock"
+        assert kwargs["note"] == "saved"
+        return wishlist_item_id
+
+    monkeypatch.setattr("app.services.wishlist.service.ensure_pool", fake_ensure_pool)
+    monkeypatch.setattr(
+        "app.services.wishlist.service.product_searches_repo.get_product_candidate",
+        fake_get_product_candidate,
+    )
+    monkeypatch.setattr(
+        "app.services.wishlist.service.product_searches_repo.create_wishlist_item",
+        fake_create_wishlist_item,
+    )
+
+    result = await add_candidate_to_wishlist(candidate_id, note="saved")
+
+    assert result == wishlist_item_id
 
 
 @pytest.mark.asyncio

@@ -28,13 +28,13 @@ CREATE TABLE public.product_candidates (
   product_url text NOT NULL CHECK (product_url ~* '^https?://'::text),
   product_image_url text CHECK (product_image_url IS NULL OR product_image_url ~* '^https?://'::text),
   thumbnail_url text CHECK (thumbnail_url IS NULL OR thumbnail_url ~* '^https?://'::text),
-  current_price_text text,
   current_price_amount numeric CHECK (current_price_amount IS NULL OR current_price_amount >= 0::numeric),
   currency_code character(3) CHECK (currency_code IS NULL OR currency_code ~ '^[A-Z]{3}$'::text),
-  stock_status text,
   in_stock boolean,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  price text,
+  stock_status text,
   CONSTRAINT product_candidates_pkey PRIMARY KEY (id),
   CONSTRAINT product_candidates_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
   CONSTRAINT product_candidates_initial_search_id_fkey FOREIGN KEY (initial_search_id) REFERENCES public.product_searches(id)
@@ -68,15 +68,31 @@ CREATE TABLE public.search_images (
   CONSTRAINT search_images_pkey PRIMARY KEY (id),
   CONSTRAINT search_images_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
+CREATE TABLE public.telegram_users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  telegram_chat_id bigint NOT NULL UNIQUE,
+  user_id uuid NOT NULL UNIQUE,
+  telegram_username text,
+  first_name text,
+  last_name text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT telegram_users_pkey PRIMARY KEY (id),
+  CONSTRAINT telegram_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.wishlist_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid,
   product_candidate_id uuid NOT NULL,
   note text,
+  added_at timestamp with time zone NOT NULL DEFAULT now(),
+  current_price_text text,
+  currency_code character(3),
+  stock_status text,
   on_discount boolean,
   sweet_spot boolean,
   reasoning text,
-  added_at timestamp with time zone NOT NULL DEFAULT now(),
+  purchased_at timestamp with time zone,
   CONSTRAINT wishlist_items_pkey PRIMARY KEY (id),
   CONSTRAINT wishlist_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
   CONSTRAINT wishlist_items_product_candidate_id_fkey FOREIGN KEY (product_candidate_id) REFERENCES public.product_candidates(id)
