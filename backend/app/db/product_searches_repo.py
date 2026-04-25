@@ -1,0 +1,205 @@
+"""Repository for persisting image searches, product candidates, and wishlist links."""
+from __future__ import annotations
+
+from decimal import Decimal
+from uuid import UUID
+
+import asyncpg
+
+
+async def create_search_image(
+    pool: asyncpg.Pool,
+    *,
+    image_url: str,
+    user_id: UUID | None = None,
+    mime_type: str | None = None,
+    width: int | None = None,
+    height: int | None = None,
+) -> UUID:
+    return await pool.fetchval(
+        """
+        INSERT INTO search_images (user_id, image_url, mime_type, width, height)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id
+        """,
+        user_id,
+        image_url,
+        mime_type,
+        width,
+        height,
+    )
+
+
+async def create_product_search(
+    pool: asyncpg.Pool,
+    *,
+    search_image_id: UUID,
+    image_url: str,
+    user_id: UUID | None = None,
+    engine: str = "google_lens",
+    search_type: str = "products",
+    language_code: str = "en",
+    country_code: str = "NL",
+    safe_mode: str = "active",
+    serpapi_search_id: str | None = None,
+    google_lens_url: str | None = None,
+    status: str = "success",
+) -> UUID:
+    return await pool.fetchval(
+        """
+        INSERT INTO product_searches (
+            user_id,
+            search_image_id,
+            engine,
+            search_type,
+            image_url,
+            language_code,
+            country_code,
+            safe_mode,
+            serpapi_search_id,
+            google_lens_url,
+            status
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING id
+        """,
+        user_id,
+        search_image_id,
+        engine,
+        search_type,
+        image_url,
+        language_code,
+        country_code,
+        safe_mode,
+        serpapi_search_id,
+        google_lens_url,
+        status,
+    )
+
+
+async def create_product_candidate(
+    pool: asyncpg.Pool,
+    *,
+    initial_search_id: UUID,
+    result_position: int,
+    title: str,
+    product_url: str,
+    user_id: UUID | None = None,
+    merchant_name: str | None = None,
+    product_image_url: str | None = None,
+    thumbnail_url: str | None = None,
+    current_price_amount: Decimal | None = None,
+    currency_code: str | None = None,
+    in_stock: bool | None = None,
+) -> UUID:
+    return await pool.fetchval(
+        """
+        INSERT INTO product_candidates (
+            user_id,
+            initial_search_id,
+            result_position,
+            title,
+            merchant_name,
+            product_url,
+            product_image_url,
+            thumbnail_url,
+            current_price_amount,
+            currency_code,
+            in_stock
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING id
+        """,
+        user_id,
+        initial_search_id,
+        result_position,
+        title,
+        merchant_name,
+        product_url,
+        product_image_url,
+        thumbnail_url,
+        current_price_amount,
+        currency_code,
+        in_stock,
+    )
+
+
+async def create_wishlist_item(
+    pool: asyncpg.Pool,
+    *,
+    product_candidate_id: UUID,
+    user_id: UUID | None = None,
+    note: str | None = None,
+) -> UUID:
+    return await pool.fetchval(
+        """
+        INSERT INTO wishlist_items (user_id, product_candidate_id, note)
+        VALUES ($1, $2, $3)
+        RETURNING id
+        """,
+        user_id,
+        product_candidate_id,
+        note,
+    )
+
+
+async def list_product_candidates(
+    pool: asyncpg.Pool,
+    *,
+    initial_search_id: UUID,
+    limit: int = 3,
+) -> list[asyncpg.Record]:
+    return await pool.fetch(
+        """
+        SELECT
+            id,
+            user_id,
+            initial_search_id,
+            result_position,
+            title,
+            merchant_name,
+            product_url,
+            product_image_url,
+            thumbnail_url,
+            current_price_amount,
+            currency_code,
+            in_stock,
+            created_at,
+            updated_at
+        FROM product_candidates
+        WHERE initial_search_id = $1
+        ORDER BY result_position ASC
+        LIMIT $2
+        """,
+        initial_search_id,
+        limit,
+    )
+
+
+async def get_product_candidate(
+    pool: asyncpg.Pool,
+    *,
+    product_candidate_id: UUID,
+) -> asyncpg.Record | None:
+    return await pool.fetchrow(
+        """
+        SELECT
+            id,
+            user_id,
+            initial_search_id,
+            result_position,
+            title,
+            merchant_name,
+            product_url,
+            product_image_url,
+            thumbnail_url,
+            current_price_amount,
+            currency_code,
+            in_stock,
+            created_at,
+            updated_at
+        FROM product_candidates
+        WHERE id = $1
+        """,
+        product_candidate_id,
+    )

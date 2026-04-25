@@ -9,6 +9,7 @@ pydantic-settings    # env-var loading in app/core/config.py
 asyncpg              # async Postgres driver for Supabase
 
 # Added as modules come online:
+#   supabase              # Supabase Python client
 #   python-telegram-bot   # (or raw httpx — decide later)
 #   anthropic             # Claude API client
 #   python-multipart      # FastAPI file uploads for /lens/scan

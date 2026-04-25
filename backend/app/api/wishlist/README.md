@@ -1,19 +1,18 @@
 # api/wishlist/
 
-Wishlist CRUD and purchase action.
+Wishlist selection endpoint.
 
-## Endpoints
+## Endpoint
 
 | Route | Purpose |
 |---|---|
-| `GET /wishlist/{user_id}` | list items with live affordability + price-drop status |
-| `POST /wishlist` | add an item (usually called internally after a scan) |
-| `DELETE /wishlist/{item_id}` | remove an item |
-| `POST /wishlist/{item_id}/purchase` | ask Claude for reasoning → if confirmed, call `POST /bunq/payments` |
+| `POST /wishlist` | add a selected `product_candidate` to the wishlist |
+
+Current v1 body:
+- `product_candidate_id`
+- optional `note`
 
 ## Dependencies
 
-- `db/wishlist_repo` — persistence
-- `services/sweetspot` — live status (`affordable_now`, `price_dropped`, `sweet_spot`)
-- `services/anthropic` — human-readable reasoning for the purchase step
-- `services/bunq` — executes the payment
+- `db/product_searches_repo` - candidate lookup + `wishlist_items` insert
+- `services/wishlist` - selection-time wishlist persistence

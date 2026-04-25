@@ -20,8 +20,12 @@ class Settings(BaseSettings):
     bunq_api_base: str = "https://public-api.sandbox.bunq.com"
 
     # Supabase Postgres connection string (transaction pooler, port 6543).
-    # SecretStr keeps the password out of repr / logs.
     database_url: SecretStr | None = None
+
+    telegram_bot_token: str = ""
+    imgbb_key: str = ""
+    serpapi_key: str = ""
+    railway_public_url: str = ""
 
 
 settings = Settings()
