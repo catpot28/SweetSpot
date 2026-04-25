@@ -253,13 +253,12 @@ export default function FindItem({ onNavigate }) {
     padding: 3,
     display: "flex",
     gap: 2,
-    width: 200,
   };
 
   const toggleBtn = (active) => ({
     flex: 1,
     height: 36,
-    padding: "0 22px",
+    padding: "0 28px",
     borderRadius: 100,
     border: "none",
     background: active ? "rgba(255,255,255,0.18)" : "transparent",

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
 const DATA = [
   { month: "Jan", value: 60  },
   { month: "Feb", value: 210 },
