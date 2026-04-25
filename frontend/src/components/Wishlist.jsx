@@ -169,6 +169,11 @@ function mapBackendItem(row) {
       ? `${candidate.currency_code === "EUR" ? "\u20ac" : candidate.currency_code || ""}${candidate.current_price_amount}`
       : "\u2014");
 
+  const isBought = row.purchased_at != null;
+  let status = "watching";
+  if (isBought) status = "bought";
+  else if (row.sweet_spot || row.on_discount) status = "discount";
+
   return {
     id: row.wishlist_item_id,
     name: candidate.title || "Untitled",
@@ -176,7 +181,8 @@ function mapBackendItem(row) {
     added: formatRelative(row.added_at),
     price,
     original: null,
-    status: row.sweet_spot ? "discount" : "watching",
+    status,
+    purchasedAt: row.purchased_at,
     inStock: candidate.in_stock,
     imageUrl: selectProductImage(candidate),
     icon: "\ud83d\uded2",
@@ -201,15 +207,24 @@ export default function Wishlist({ onNavigate, onOpenItem, initialFilter = "all"
   const [items, setItems] = useState(null);
 
   useEffect(() => {
-    if (activeFilter !== "all") {
-      setItems([]);
-      return;
-    }
-
     let cancelled = false;
-    api.getWishlist()
+    const fetcher =
+      activeFilter === "discount"
+        ? api.getWishlistDiscount
+        : activeFilter === "bought"
+        ? api.getWishlistBought
+        : api.getWishlist;
+
+    fetcher()
       .then((rows) => {
-        if (!cancelled) setItems(rows.map(mapBackendItem));
+        if (cancelled) return;
+        const mapped = rows.map(mapBackendItem);
+        // The "All" view hides items already purchased — they live under "Bought".
+        const filtered =
+          activeFilter === "all"
+            ? mapped.filter((item) => item.status !== "bought")
+            : mapped;
+        setItems(filtered);
       })
       .catch((err) => {
         console.error("wishlist fetch failed:", err);
