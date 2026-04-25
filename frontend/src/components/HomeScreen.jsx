@@ -14,8 +14,8 @@ import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 export default function SmartWishlist({
   onNavigate,
   itemCount = 24,
-  // Live BUNQ balance shown in the "Current balance" pill. null = loading.
   currentBalance = null,
+  disposable = null,
   stats = { bought: 17, onDiscount: 5, allTime: 42 },
 }) {
   const isMobile = useIsMobile();
@@ -270,17 +270,22 @@ export default function SmartWishlist({
             </div>
             <span style={s.pillChevronPink}>›</span>
           </div>
-          {/* Total saved pill — green */}
-          <div style={s.statPillSavings}>
-            <div style={s.pillIconGreen}>
-              <span style={{ color: "#50dc78", fontSize: 24, fontWeight: 700, lineHeight: 1 }}>€</span>
-            </div>
-            <div>
+          {/* Balance + disposable pill — split horizontally */}
+          <div style={{ ...s.statPillSavings, flexDirection: "column", gap: 0, padding: 0 }}>
+            {/* Top half — current balance */}
+            <div style={{ padding: "12px 14px 10px" }}>
               <div style={s.pillLabel}>Current balance</div>
               <div style={s.pillValGreen}>
-                {currentBalance == null
-                  ? "…"
-                  : `€${currentBalance.toFixed(2)}`}
+                {currentBalance == null ? "…" : `€${currentBalance.toFixed(2)}`}
+              </div>
+            </div>
+            {/* Divider */}
+            <div style={{ height: 1, background: "rgba(80,220,120,0.15)", margin: "0 14px" }} />
+            {/* Bottom half — disposable */}
+            <div style={{ padding: "10px 14px 12px" }}>
+              <div style={s.pillLabel}>Disposable</div>
+              <div style={{ color: disposable == null ? "rgba(255,255,255,0.25)" : disposable >= 0 ? "#ffd234" : "#f87171", fontSize: 18, fontWeight: 800, letterSpacing: -0.5, marginTop: 1 }}>
+                {disposable == null ? "…" : `€${disposable.toFixed(2)}`}
               </div>
             </div>
           </div>

@@ -20,6 +20,7 @@ function App() {
   const [counts, setCounts] = useState({ all: 0, discount: 0, bought: 0 })
   // Live BUNQ balance for the "Total saved" pill on home. null = loading.
   const [balance, setBalance] = useState(null)
+  const [disposable, setDisposable] = useState(null)
 
   useEffect(() => {
     if (screen !== 'home') return
@@ -33,6 +34,9 @@ function App() {
     api.getBalance()
       .then((b) => setBalance(parseFloat(b.value)))
       .catch((e) => console.error('balance fetch failed:', e))
+    api.getFinancials()
+      .then((f) => setDisposable(f.disposable))
+      .catch((e) => console.error('financials fetch failed:', e))
   }, [screen])
 
   const homeStats = {
@@ -49,6 +53,7 @@ function App() {
           itemCount={counts.all}
           stats={homeStats}
           currentBalance={balance}
+          disposable={disposable}
         />
       )}
       {screen === 'find' && (
