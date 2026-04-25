@@ -19,7 +19,10 @@ log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_pool()
+    try:
+        await init_pool()
+    except RuntimeError as e:
+        log.warning("DB pool not started: %s", e)
 
     log.info("token_set=%s  railway_url=%s", bool(settings.telegram_bot_token), settings.railway_public_url)
     try:
