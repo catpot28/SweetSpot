@@ -59,11 +59,9 @@ class ScoreBreakdown(BaseModel):
 class ScoreResponse(BaseModel):
     sweetspot: bool
     score: int
-    tier: str
     reasoning: str
     item_price: float
     disposable: float
-    deficit: float
     score_breakdown: ScoreBreakdown
 
 
@@ -89,11 +87,9 @@ async def score(body: ScoreRequest, client: ClientDep) -> ScoreResponse:
     return ScoreResponse(
         sweetspot=result.sweetspot,
         score=result.score,
-        tier=result.tier,
         reasoning=result.reasoning,
         item_price=float(result.item_price),
         disposable=float(result.disposable),
-        deficit=float(result.deficit),
         score_breakdown=ScoreBreakdown(**result.score_breakdown),
     )
 
