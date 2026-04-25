@@ -9,7 +9,7 @@ import httpx
 
 from app.core.config import settings
 from app.db import product_searches_repo
-from app.db.client import get_pool
+from app.db.client import ensure_pool
 from app.services.serpapi.models import PersistableCandidate, ProductSearchResult
 
 log = logging.getLogger(__name__)
@@ -49,11 +49,14 @@ async def search_products(image_url: str) -> ProductSearchResult:
     log.info("SerpApi full response keys: %s", list(data.keys()))
 
     matches = _extract_matches(data)
-    pool = get_pool()
+    log.info("About to ensure DB pool for search persistence; image_url=%s matches=%d", image_url, len(matches))
+    pool = await ensure_pool()
+    log.info("DB pool available; persisting search image")
     search_image_id = await product_searches_repo.create_search_image(
         pool,
         image_url=image_url,
     )
+    log.info("Persisted search image id=%s; creating product search", search_image_id)
     product_search_id = await product_searches_repo.create_product_search(
         pool,
         search_image_id=search_image_id,
@@ -65,6 +68,7 @@ async def search_products(image_url: str) -> ProductSearchResult:
         google_lens_url=_get_google_lens_url(data),
         status=_get_status(data),
     )
+    log.info("Persisted product search id=%s", product_search_id)
 
     product_candidate_id = None
     wishlist_item_id = None

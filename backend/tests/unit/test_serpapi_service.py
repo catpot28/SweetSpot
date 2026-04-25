@@ -84,7 +84,10 @@ async def test_search_products_persists_search_candidate_and_wishlist_item(monke
         return wishlist_item_id
 
     monkeypatch.setattr("app.services.serpapi.serpservice.httpx.AsyncClient", FakeAsyncClient)
-    monkeypatch.setattr("app.services.serpapi.serpservice.get_pool", lambda: object())
+    async def fake_ensure_pool():
+        return object()
+
+    monkeypatch.setattr("app.services.serpapi.serpservice.ensure_pool", fake_ensure_pool)
     monkeypatch.setattr(
         "app.services.serpapi.serpservice.product_searches_repo.create_search_image",
         fake_create_search_image,
@@ -139,7 +142,10 @@ async def test_search_products_uses_fallback_results_when_visual_matches_missing
         return uuid4()
 
     monkeypatch.setattr("app.services.serpapi.serpservice.httpx.AsyncClient", FakeAsyncClient)
-    monkeypatch.setattr("app.services.serpapi.serpservice.get_pool", lambda: object())
+    async def fake_ensure_pool():
+        return object()
+
+    monkeypatch.setattr("app.services.serpapi.serpservice.ensure_pool", fake_ensure_pool)
     monkeypatch.setattr(
         "app.services.serpapi.serpservice.product_searches_repo.create_search_image",
         fake_create_search_image,
@@ -188,7 +194,10 @@ async def test_search_products_skips_candidate_persistence_when_no_linkable_matc
         raise AssertionError("wishlist item should not be created without candidate")
 
     monkeypatch.setattr("app.services.serpapi.serpservice.httpx.AsyncClient", FakeAsyncClient)
-    monkeypatch.setattr("app.services.serpapi.serpservice.get_pool", lambda: object())
+    async def fake_ensure_pool():
+        return object()
+
+    monkeypatch.setattr("app.services.serpapi.serpservice.ensure_pool", fake_ensure_pool)
     monkeypatch.setattr(
         "app.services.serpapi.serpservice.product_searches_repo.create_search_image",
         fake_create_search_image,
