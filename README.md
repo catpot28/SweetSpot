@@ -30,18 +30,19 @@ Every folder has its own `README.md` describing what lives there and what is pla
 
 ## Quick start
 
-1. Copy [.env.example](.env.example) to `.env` and fill in the keys.
+1. Copy [.env.example](.env.example) to `.env` and fill in keys (BUNQ, `DATABASE_URL`, etc.).
 2. `./scripts/setup.sh` — creates the Python 3.12 venv at `backend/.venv`, installs deps.
-3. `./scripts/handshake.sh` — runs the BUNQ sandbox handshake, saves creds to `backend/.bunq_state.json`. Required before any other backend command.
-4. `./scripts/dev-backend.sh` — runs FastAPI at `http://127.0.0.1:8000` (try `/docs` for the interactive Swagger UI).
-5. `./scripts/dev-frontend.sh` — Vite dev server (frontend not scaffolded yet).
+3. `./scripts/handshake.sh` — runs the BUNQ sandbox handshake, saves creds to `backend/.bunq_state.json`.
+4. `./scripts/migrate-state-to-db.sh` — copies that state into the `bunq_credentials` Supabase table (the FastAPI server reads from DB).
+5. `./scripts/dev-backend.sh` — runs FastAPI at `http://127.0.0.1:8000` (try `/docs` for Swagger).
+6. `./scripts/dev-frontend.sh` — Vite dev server (frontend not scaffolded yet).
 
 ## Status
 
 | Layer | State |
 |---|---|
 | BUNQ integration (client, signing, 5 routes) | **Built** — verified end-to-end against the sandbox |
-| Supabase persistence (multi-user) | Pending — single-user JSON file for now |
+| Supabase persistence (`bunq_credentials` + product-side tables) | **Built** — schema in [`infra/supabase/schema.sql`](infra/supabase/schema.sql), live, FastAPI reads from DB |
 | Telegram bot webhook | Pending |
 | Lens pipeline (ImgBB + SerpApi) | Pending |
 | Sweet-spot algorithm | Pending |

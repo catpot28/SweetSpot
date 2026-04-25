@@ -25,7 +25,7 @@ async def main() -> None:
         raise SystemExit(f"no state at {STATE_FILE} — run scripts/handshake.sh first")
 
     store = FileStateStore(STATE_FILE)
-    state = store.load()
+    state = await store.load()
 
     async with BunqClient(state, store) as client:
         print("=== get_user ===")
