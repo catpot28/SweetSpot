@@ -33,10 +33,7 @@ async def _call_serpapi(image_url: str) -> dict[str, Any]:
         "url": image_url,
         "hl": _LANGUAGE_CODE,
         "country": _COUNTRY_CODE.lower(),
-        # SerpApi parameter is `type`, not `search_type` — the latter is silently
-        # ignored, defaulting to `all` which includes news/social/gallery pages
-        # (no prices). `products` returns the products tab, which has prices.
-        "type": "products",
+        "search_type": "products",
         "safe": _SAFE_MODE,
         "auto_crop": "true",
         "api_key": settings.serpapi_key,
@@ -135,35 +132,19 @@ def _select_top_candidates(
     *,
     limit: int,
 ) -> list[PersistableCandidate]:
-    # Two-pass: first collect every match that has a parseable numeric price
-    # (skip news / social / no-price results), then sort by price ascending so
-    # the cheapest becomes result_position=1 (= "best deal").
-    priced: list[PersistableCandidate] = []
-    for match in matches:
+    selected: list[PersistableCandidate] = []
+    for index, match in enumerate(matches, start=1):
         title = _as_non_empty_string(match.get("title"))
         product_url = _extract_product_url(match)
         if not title or not product_url:
             continue
 
-        raw_price = match.get("price")
-        if isinstance(raw_price, dict):
-            raw_price = (
-                raw_price.get("value")
-                or raw_price.get("extracted_value")
-                or raw_price.get("price")
-            )
-        price_text = _as_non_empty_string(
-            raw_price if isinstance(raw_price, str) else (str(raw_price) if raw_price is not None else None)
-        )
+        price_text = _as_non_empty_string(match.get("price"))
         price_amount, currency_code = _extract_price(match, price_text)
-        if price_amount is None:
-            # Honest mode: every displayed candidate must have a real price.
-            continue
-
         stock_status = _extract_stock_status(match)
-        priced.append(
+        selected.append(
             PersistableCandidate(
-                result_position=0,  # filled in after sort
+                result_position=index,
                 title=title,
                 product_url=product_url,
                 merchant_name=_as_non_empty_string(
@@ -178,13 +159,6 @@ def _select_top_candidates(
                 in_stock=_extract_in_stock(match, stock_status),
             )
         )
-
-    priced.sort(key=lambda c: c.current_price_amount)
-
-    selected: list[PersistableCandidate] = []
-    for index, c in enumerate(priced[:limit], start=1):
-        c.result_position = index  # frozen=False slots dataclass — mutable
-        selected.append(c)
         if len(selected) >= limit:
             break
     return selected
