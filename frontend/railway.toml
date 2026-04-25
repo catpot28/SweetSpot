@@ -1,0 +1,9 @@
+# Frontend deployment — activates when a Railway service uses
+# Root Directory = frontend.
+#
+# Railpack auto-detects React/Vite from package.json and runs
+# `npm install` + `npm run build`. After that, this start command
+# serves the static dist/ folder via `serve` (fetched on demand).
+
+[deploy]
+startCommand = "npx --yes serve -s dist -l $PORT"
