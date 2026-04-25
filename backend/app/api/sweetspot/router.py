@@ -45,9 +45,12 @@ async def search(body: SearchRequest) -> SearchResponse:
 
 def _to_match(m: dict[str, Any]) -> ProductMatch:
     ep = m.get("extracted_price")
+    raw_price = m.get("price")
+    if isinstance(raw_price, dict):
+        raw_price = raw_price.get("value") or raw_price.get("extracted_value") or str(raw_price)
     return ProductMatch(
         title=m.get("title"),
-        price=m.get("price"),
+        price=str(raw_price) if raw_price is not None else None,
         extracted_price=float(ep) if isinstance(ep, (int, float)) and not isinstance(ep, bool) else None,
         link=m.get("link") or m.get("product_link"),
         thumbnail=m.get("thumbnail"),
