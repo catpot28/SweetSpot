@@ -273,10 +273,7 @@ export default function SmartWishlist({
           {/* Total saved pill — green */}
           <div style={s.statPillSavings}>
             <div style={s.pillIconGreen}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#50dc78" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="12" y1="1" x2="12" y2="23"/>
-                <path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/>
-              </svg>
+              <span style={{ color: "#50dc78", fontSize: 24, fontWeight: 700, lineHeight: 1 }}>€</span>
             </div>
             <div>
               <div style={s.pillLabel}>Total saved</div>

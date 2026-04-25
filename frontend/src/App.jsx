@@ -6,6 +6,7 @@ import Wishlist from './components/Wishlist'
 import ProductDetail from './components/ProductDetail'
 import PurchaseSuccess from './components/PurchaseSuccess'
 import Scanning from './components/Scanning'
+import DeleteConfirm from './components/DeleteConfirm'
 import { api } from './lib/api'
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
       {screen === 'wishlist-discount' && <Wishlist onNavigate={setScreen} initialFilter="discount" />}
       {screen === 'wishlist-bought' && <Wishlist onNavigate={setScreen} initialFilter="bought" />}
       {screen === 'detail' && <ProductDetail onNavigate={setScreen} />}
+      {screen === 'delete' && <DeleteConfirm onNavigate={setScreen} />}
       {screen === 'success' && <PurchaseSuccess onNavigate={setScreen} />}
       {screen === 'scanning' && <Scanning onNavigate={setScreen} />}
     </>
