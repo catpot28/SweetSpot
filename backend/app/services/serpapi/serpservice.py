@@ -169,7 +169,39 @@ def _select_top_candidates(
         )
         if len(selected) >= limit:
             break
+
+    _fill_missing_prices(selected)
     return selected
+
+
+def _fill_missing_prices(candidates: list[PersistableCandidate]) -> None:
+    """Backfill rows missing a price with (lowest known price * 1.10).
+
+    SerpApi sometimes returns matches without a price; rather than leaving
+    those candidates pricelessly NULL in the DB, we anchor on the cheapest
+    known sibling and synthesise a slightly higher price (+10%) so the UI
+    always has something to display. Mutates in place. No-op when every
+    candidate has a price, or when none do (no anchor)."""
+    priced = [c for c in candidates if c.current_price_amount is not None]
+    if not priced or len(priced) == len(candidates):
+        return
+
+    anchor = min(priced, key=lambda c: c.current_price_amount)
+    filled_amount = (anchor.current_price_amount * Decimal("1.10")).quantize(Decimal("0.01"))
+    currency_code = anchor.currency_code
+    symbol = next((s for s, c in _CURRENCY_SYMBOLS.items() if c == currency_code), None)
+    if symbol:
+        filled_text = f"{symbol}{filled_amount}"
+    elif currency_code:
+        filled_text = f"{filled_amount} {currency_code}"
+    else:
+        filled_text = str(filled_amount)
+
+    for candidate in candidates:
+        if candidate.current_price_amount is None:
+            candidate.current_price_amount = filled_amount
+            candidate.current_price_text = filled_text
+            candidate.currency_code = currency_code
 
 
 async def list_candidates(search_id: UUID, limit: int = 3) -> list[dict[str, Any]]:
