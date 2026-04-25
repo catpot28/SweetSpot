@@ -46,6 +46,7 @@ class FinancialSummary(BaseModel):
 
 
 class SearchResponse(BaseModel):
+    prices: list[float]
     matches: list[ProductMatch]
     financials: FinancialSummary
 
@@ -93,7 +94,11 @@ async def search(body: SearchRequest, client: ClientDep) -> SearchResponse:
     log.info("sweetspot/search: fixed_monthly=%.2f variable_monthly=%.2f disposable=%.2f",
              summary.fixed_monthly, summary.variable_monthly, summary.disposable)
 
+    prices = [m["extracted_price"] for m in matches
+              if isinstance(m.get("extracted_price"), (int, float)) and m["extracted_price"] > 0]
+
     return SearchResponse(
+        prices=prices,
         matches=[_to_match(m) for m in matches],
         financials=FinancialSummary(
             balance=float(summary.balance),
