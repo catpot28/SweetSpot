@@ -276,10 +276,23 @@ def _extract_price(
     match: dict[str, Any],
     price_text: str | None = None,
 ) -> tuple[Decimal | None, str | None]:
+    # SerpApi sometimes provides the numeric amount at the top level as
+    # extracted_price (e.g. shopping_results), and sometimes nests it inside
+    # match["price"] = {"value": "€7,901*", "extracted_value": 7901, ...}
+    # for Google Lens visual_matches. Prefer either over regex-parsing the
+    # display text: a string like "€7,901" trips the regex into reading the
+    # comma as a decimal separator (7.901 instead of 7901).
     extracted_price = match.get("extracted_price")
     if isinstance(extracted_price, (int, float)) and not isinstance(extracted_price, bool):
         amount = Decimal(str(extracted_price))
         return amount, _extract_currency_code(match, price_text)
+
+    raw_price = match.get("price")
+    if isinstance(raw_price, dict):
+        nested = raw_price.get("extracted_value")
+        if isinstance(nested, (int, float)) and not isinstance(nested, bool):
+            amount = Decimal(str(nested))
+            return amount, _extract_currency_code(match, price_text)
 
     if not price_text:
         return None, None
@@ -288,7 +301,14 @@ def _extract_price(
     if not number_match:
         return None, _extract_currency_code(match, price_text)
 
-    raw_number = number_match.group(1).replace(",", ".")
+    raw_number = number_match.group(1)
+    # Heuristic: a single comma followed by exactly 3 digits (and nothing
+    # after) is a thousands separator, not a decimal point — drop it. Real
+    # decimal commas in EU prices are followed by 2 digits ("12,99").
+    if re.fullmatch(r"\d+,\d{3}", raw_number):
+        raw_number = raw_number.replace(",", "")
+    else:
+        raw_number = raw_number.replace(",", ".")
     try:
         amount = Decimal(raw_number)
     except InvalidOperation:
