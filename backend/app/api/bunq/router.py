@@ -1,7 +1,7 @@
 """HTTP routes wrapping BUNQ. Each handler delegates to services/bunq/operations.py."""
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -24,6 +24,7 @@ class DraftPaymentBody(BaseModel):
     amount_eur: str
     counterparty_email: str
     description: str
+    category: Literal["fixed", "variable", "other"] = "other"
 
 
 class DraftPaymentResponse(BaseModel):
@@ -58,7 +59,7 @@ async def create_draft_payment(
         client,
         amount_eur=body.amount_eur,
         counterparty_email=body.counterparty_email,
-        description=body.description,
+        description=f"{body.description} #{body.category}",
     )
     return DraftPaymentResponse(draft_id=draft_id)
 
