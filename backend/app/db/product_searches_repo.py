@@ -229,9 +229,20 @@ async def get_product_candidate(
     )
 
 
-async def list_wishlist_items(pool: asyncpg.Pool) -> list[asyncpg.Record]:
+_WISHLIST_FILTERS = {
+    None:       "",
+    "discount": "WHERE COALESCE(wi.sweet_spot, false) OR COALESCE(wi.on_discount, false)",
+    "bought":   "WHERE wi.purchased_at IS NOT NULL",
+}
+
+
+async def list_wishlist_items(
+    pool: asyncpg.Pool, *, filter_: str | None = None
+) -> list[asyncpg.Record]:
+    """List wishlist items, optionally filtered to "discount" or "bought"."""
+    where = _WISHLIST_FILTERS.get(filter_, "")
     return await pool.fetch(
-        """
+        f"""
         SELECT
             wi.id AS wishlist_item_id,
             wi.user_id AS wishlist_user_id,
@@ -241,6 +252,7 @@ async def list_wishlist_items(pool: asyncpg.Pool) -> list[asyncpg.Record]:
             wi.sweet_spot,
             wi.reasoning,
             wi.added_at,
+            wi.purchased_at,
             pc.id,
             pc.user_id,
             pc.initial_search_id,
@@ -260,6 +272,7 @@ async def list_wishlist_items(pool: asyncpg.Pool) -> list[asyncpg.Record]:
         FROM wishlist_items wi
         JOIN product_candidates pc
           ON pc.id = wi.product_candidate_id
+        {where}
         ORDER BY wi.added_at DESC
         """
     )

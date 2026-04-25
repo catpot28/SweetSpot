@@ -15,22 +15,24 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null)
   // Set after /lens/scan returns; passed to Candidates so it can fetch real results.
   const [searchId, setSearchId] = useState(null)
-  // Real wishlist rows from GET /wishlist; refreshed every time we land on home.
-  const [wishlist, setWishlist] = useState([])
+  // Counts shown on home — one fetch per filter endpoint, refreshed on home mount.
+  const [counts, setCounts] = useState({ all: 0, discount: 0, bought: 0 })
 
   useEffect(() => {
     if (screen !== 'home') return
-    api.getWishlist()
-      .then(setWishlist)
-      .catch((e) => console.error('wishlist fetch failed:', e))
+    Promise.all([
+      api.getWishlist().catch(() => []),
+      api.getWishlistDiscount().catch(() => []),
+      api.getWishlistBought().catch(() => []),
+    ]).then(([all, discount, bought]) =>
+      setCounts({ all: all.length, discount: discount.length, bought: bought.length })
+    )
   }, [screen])
 
-  // Until /wishlist supports filtered queries, derive these counts client-side.
-  // `bought` has no backend concept yet — leave at 0 until that endpoint lands.
   const homeStats = {
-    bought: 0,
-    onDiscount: wishlist.filter((i) => i.sweet_spot || i.on_discount).length,
-    allTime: wishlist.length,
+    bought: counts.bought,
+    onDiscount: counts.discount,
+    allTime: counts.all,
   }
 
   return (
@@ -38,7 +40,7 @@ function App() {
       {screen === 'home' && (
         <HomeScreen
           onNavigate={setScreen}
-          itemCount={wishlist.length}
+          itemCount={counts.all}
           stats={homeStats}
         />
       )}

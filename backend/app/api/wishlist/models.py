@@ -48,4 +48,5 @@ class WishlistItemResponse(BaseModel):
     sweet_spot: bool | None
     reasoning: str | None
     added_at: datetime
+    purchased_at: datetime | None = None
     candidate: WishlistCandidateResponse

@@ -33,9 +33,9 @@ async def add_candidate_to_wishlist(
     )
 
 
-async def list_wishlist_items() -> list[dict[str, Any]]:
+async def list_wishlist_items(filter_: str | None = None) -> list[dict[str, Any]]:
     pool = await ensure_pool()
-    rows = await product_searches_repo.list_wishlist_items(pool)
+    rows = await product_searches_repo.list_wishlist_items(pool, filter_=filter_)
     return [_record_to_wishlist_item(row) for row in rows]
 
 
@@ -49,6 +49,7 @@ def _record_to_wishlist_item(row: Any) -> dict[str, Any]:
         "sweet_spot": row["sweet_spot"],
         "reasoning": row["reasoning"],
         "added_at": row["added_at"],
+        "purchased_at": row["purchased_at"],
         "candidate": {
             "id": row["id"],
             "user_id": row["user_id"],

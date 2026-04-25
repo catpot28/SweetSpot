@@ -18,6 +18,20 @@ async def get_wishlist_items() -> list[WishlistItemResponse]:
     return [WishlistItemResponse(**item) for item in items]
 
 
+@router.get("/discount", response_model=list[WishlistItemResponse])
+async def get_discounted_wishlist_items() -> list[WishlistItemResponse]:
+    """Wishlist items currently on discount (sweet_spot OR on_discount)."""
+    items = await list_wishlist_items(filter_="discount")
+    return [WishlistItemResponse(**item) for item in items]
+
+
+@router.get("/bought", response_model=list[WishlistItemResponse])
+async def get_bought_wishlist_items() -> list[WishlistItemResponse]:
+    """Wishlist items that have been purchased (purchased_at set)."""
+    items = await list_wishlist_items(filter_="bought")
+    return [WishlistItemResponse(**item) for item in items]
+
+
 @router.post("", response_model=AddWishlistItemResponse, status_code=status.HTTP_201_CREATED)
 async def create_wishlist_item(body: AddWishlistItemBody) -> AddWishlistItemResponse:
     try:

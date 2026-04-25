@@ -77,6 +77,7 @@ CREATE TABLE public.wishlist_items (
   sweet_spot boolean,
   reasoning text,
   added_at timestamp with time zone NOT NULL DEFAULT now(),
+  purchased_at timestamp with time zone,
   CONSTRAINT wishlist_items_pkey PRIMARY KEY (id),
   CONSTRAINT wishlist_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
   CONSTRAINT wishlist_items_product_candidate_id_fkey FOREIGN KEY (product_candidate_id) REFERENCES public.product_candidates(id)
