@@ -42,16 +42,49 @@ export const api = {
   getTransactions: (count = 50) =>
     request(`/bunq/transactions/${USER_ID}?count=${count}`),
 
-  createDraftPayment: ({ amountEur, counterpartyEmail, description }) =>
+  createDraftPayment: ({ amountEur, counterpartyEmail, description, category }) =>
     request('/bunq/payments/draft', {
       method: 'POST',
       body: JSON.stringify({
         amount_eur: amountEur,
         counterparty_email: counterpartyEmail,
         description,
+        ...(category ? { category } : {}),
       }),
     }),
 
   confirmDraftPayment: (draftId) =>
     request(`/bunq/payments/${draftId}/confirm`, { method: 'POST' }),
+
+  bunqTopup: (amountEur) =>
+    request('/bunq/topup', {
+      method: 'POST',
+      body: JSON.stringify({ amount_eur: amountEur }),
+    }),
+
+  // Lens
+  getLensCandidates: (searchId, limit = 3) =>
+    request(`/lens/searches/${searchId}/candidates?limit=${limit}`),
+
+  // Wishlist
+  getWishlist: () => request('/wishlist'),
+
+  addToWishlist: ({ productCandidateId, note, onDiscount, sweetSpot, reasoning }) =>
+    request('/wishlist', {
+      method: 'POST',
+      body: JSON.stringify({
+        product_candidate_id: productCandidateId,
+        ...(note != null ? { note } : {}),
+        ...(onDiscount != null ? { on_discount: onDiscount } : {}),
+        ...(sweetSpot != null ? { sweet_spot: sweetSpot } : {}),
+        ...(reasoning != null ? { reasoning } : {}),
+      }),
+    }),
+
+  // SweetSpot — image_url in, scoring + matches out
+  sweetspotSearch: (imageUrl) =>
+    request('/sweetspot/search', {
+      method: 'POST',
+      body: JSON.stringify({ image_url: imageUrl }),
+    }),
 };

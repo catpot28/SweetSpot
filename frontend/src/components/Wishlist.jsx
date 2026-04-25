@@ -1,103 +1,15 @@
 import { useState, useEffect } from "react";
 import StatusBar from './StatusBar';
 import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
+import { api } from "../lib/api";
 
-const ALL_ITEMS = [
-  {
-    id: 1,
-    name: "Sony WH-1000XM5",
-    store: "Amazon.de",
-    added: "Added 3 days ago",
-    price: "€269",
-    original: "€349",
-    status: "discount",
-    icon: "🎧",
-    iconBg: "#1a3d28",
-  },
-  {
-    id: 2,
-    name: "iPad Air M2",
-    store: "Apple Store",
-    added: "Added 1 week ago",
-    price: "€749",
-    original: "€799",
-    status: "discount",
-    icon: "📱",
-    iconBg: "#1a2d50",
-  },
-  {
-    id: 3,
-    name: "Dyson V15 Detect",
-    store: "Dyson.com",
-    added: "Added 2 weeks ago",
-    price: "€649",
-    original: null,
-    status: "watching",
-    icon: "🌀",
-    iconBg: "#3d2a10",
-  },
-  {
-    id: 4,
-    name: "Nike Air Max 90",
-    store: "Nike.com",
-    added: "Added 5 days ago",
-    price: "€129",
-    original: null,
-    status: "watching",
-    icon: "👟",
-    iconBg: "#2a1a3d",
-  },
-  {
-    id: 5,
-    name: "Levi's 501 Jeans",
-    store: "Zalando",
-    added: "Added 3 weeks ago",
-    price: "€89",
-    original: null,
-    status: "watching",
-    icon: "👖",
-    iconBg: "#1a2040",
-  },
-  {
-    id: 6,
-    name: "AirPods Pro 2",
-    store: "MediaMarkt",
-    added: "Bought 2 weeks ago",
-    price: "€229",
-    original: null,
-    status: "bought",
-    icon: "🎵",
-    iconBg: "#1a1a2a",
-  },
-  {
-    id: 7,
-    name: "Kindle Paperwhite",
-    store: "Amazon.de",
-    added: "Bought 1 month ago",
-    price: "€139",
-    original: null,
-    status: "bought",
-    icon: "📖",
-    iconBg: "#1a2a1a",
-  },
-  {
-    id: 8,
-    name: "DJI Mini 4 Pro",
-    store: "DJI Store",
-    added: "Added today",
-    price: "€759",
-    original: null,
-    status: "planned",
-    icon: "🚁",
-    iconBg: "#301a1a",
-  },
-];
 
+// "On discount" and "Bought" each get their own backend endpoint later;
+// for now only "All" returns real data (from GET /wishlist).
 const FILTERS = [
-  { key: "all",      label: "All",         count: 24 },
-  { key: "discount", label: "On discount", count: 5  },
-  { key: "watching", label: "Watching",    count: 12 },
-  { key: "bought",   label: "Bought",      count: 17 },
+  { key: "all",      label: "All" },
+  { key: "discount", label: "On discount" },
+  { key: "bought",   label: "Bought" },
 ];
 
 const STATUS_PILL = {
@@ -224,16 +136,61 @@ function ItemCard({ item, onNavigate, visible, delay }) {
   );
 }
 
+// Map a backend /wishlist row → the shape ItemCard expects.
+function mapBackendItem(row) {
+  const c = row.candidate || {};
+  const price =
+    c.current_price_text ||
+    (c.current_price_amount != null
+      ? `${c.currency_code === "EUR" ? "€" : c.currency_code || ""}${c.current_price_amount}`
+      : "—");
+  return {
+    id: row.wishlist_item_id,
+    name: c.title || "Untitled",
+    store: c.merchant_name || "Online store",
+    added: formatRelative(row.added_at),
+    price,
+    original: null,
+    status: row.sweet_spot ? "discount" : "watching",
+    icon: "🛒",
+    iconBg: row.sweet_spot ? "#1a3d28" : "#2a1a3d",
+  };
+}
+
+function formatRelative(iso) {
+  if (!iso) return "Added recently";
+  const days = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86400000));
+  if (days === 0) return "Added today";
+  if (days === 1) return "Added yesterday";
+  if (days < 7) return `Added ${days} days ago`;
+  if (days < 30) return `Added ${Math.round(days / 7)} weeks ago`;
+  return `Added ${Math.round(days / 30)} months ago`;
+}
+
 export default function Wishlist({ onNavigate, initialFilter = "all" }) {
   const isMobile = useIsMobile();
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [visible, setVisible] = useState(false);
+  const [items, setItems] = useState(null); // null = loading
 
-  const filtered = activeFilter === "all"
-    ? ALL_ITEMS
-    : ALL_ITEMS.filter((i) => i.status === activeFilter);
+  // Only the "all" filter has a real endpoint right now.
+  useEffect(() => {
+    if (activeFilter !== "all") {
+      setItems([]);
+      return;
+    }
+    let cancelled = false;
+    api.getWishlist()
+      .then((rows) => { if (!cancelled) setItems(rows.map(mapBackendItem)); })
+      .catch((err) => {
+        console.error("wishlist fetch failed:", err);
+        if (!cancelled) setItems([]);
+      });
+    return () => { cancelled = true; };
+  }, [activeFilter]);
 
-  const filterCount = FILTERS.find((f) => f.key === activeFilter)?.count ?? filtered.length;
+  const filtered = items ?? [];
+  const filterCount = filtered.length;
 
   // Trigger entrance animation on mount + filter change
   useEffect(() => {
@@ -312,7 +269,7 @@ export default function Wishlist({ onNavigate, initialFilter = "all" }) {
                 whiteSpace: "nowrap",
               }}
             >
-              {f.label} ({f.count})
+              {f.label}
             </button>
           );
         })}
