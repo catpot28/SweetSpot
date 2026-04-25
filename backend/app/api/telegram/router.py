@@ -107,27 +107,47 @@ def _pick_cheapest(candidates: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _format_added(added: dict[str, Any], all_candidates: list[dict[str, Any]]) -> str:
     title = added.get("title") or "Unknown product"
-    price = added.get("current_price_text") or (
-        f"€{added['current_price_amount']}" if added.get("current_price_amount") else "Price unavailable"
-    )
+    merchant = added.get("merchant_name") or ""
+    link = added.get("product_url") or ""
 
-    lines = [f"✅ Added to wishlist:\n{title}\n💰 {price}"]
+    price_line = _price_str(added)
+
+    header = f"✅ Added to wishlist:\n{title}"
+    if merchant:
+        header += f"\n🏪 {merchant}"
+    if price_line:
+        header += f"\n💰 {price_line}"
+    if link:
+        header += f"\n🔗 {link}"
+
+    lines = [header]
 
     others = [c for c in all_candidates if c["id"] != added["id"]]
     if others:
         lines.append("🔍 Other matches:")
         for c in others:
             t = c.get("title") or "Unknown"
-            p = c.get("current_price_text") or (
-                f"€{c['current_price_amount']}" if c.get("current_price_amount") else ""
-            )
-            link = c.get("product_url") or ""
-            entry = f"• {t}" + (f"  💰 {p}" if p else "")
-            if link:
-                entry += f"\n  🔗 {link}"
+            m = c.get("merchant_name") or ""
+            p = _price_str(c)
+            u = c.get("product_url") or ""
+            entry = f"• {t}" + (f" — {m}" if m else "") + (f"  💰 {p}" if p else "")
+            if u:
+                entry += f"\n  🔗 {u}"
             lines.append(entry)
 
     return "\n\n".join(lines)
+
+
+def _price_str(candidate: dict[str, Any]) -> str:
+    text = candidate.get("current_price_text")
+    if text:
+        return text
+    amount = candidate.get("current_price_amount")
+    if amount is not None:
+        currency = candidate.get("currency_code") or "€"
+        symbol = {"EUR": "€", "USD": "$", "GBP": "£"}.get(currency, currency + " ")
+        return f"{symbol}{amount}"
+    return ""
 
 
 async def send_message(chat_id: int, text: str) -> None:
