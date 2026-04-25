@@ -91,7 +91,7 @@ def main() -> None:
         topup(client, TOPUP_AMOUNT)
 
         balance = client.get(f"/bunq/balance/{USER_ID}").json()
-        print(f"Balance after top-up: {balance['balance']} {balance['currency']}\n")
+        print(f"Balance after top-up: {balance['value']} {balance['currency']}\n")
 
         # 2 — Fixed costs x2 months
         print("Creating fixed costs (2 months)...")
@@ -106,7 +106,7 @@ def main() -> None:
 
         # 4 — Final balance
         balance_after = client.get(f"/bunq/balance/{USER_ID}").json()
-        print(f"\nFinal balance: {balance_after['balance']} {balance_after['currency']}")
+        print(f"\nFinal balance: {balance_after['value']} {balance_after['currency']}")
         print("Seed complete ✓")
 
 
