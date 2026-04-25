@@ -185,6 +185,9 @@ function mapBackendItem(row) {
     purchasedAt: row.purchased_at,
     inStock: candidate.in_stock,
     imageUrl: selectProductImage(candidate),
+    productUrl: candidate.product_url,
+    productCandidateId: candidate.id,
+    initialSearchId: candidate.initial_search_id,
     icon: "\ud83d\uded2",
     iconBg: row.sweet_spot ? "#1a3d28" : "#2a1a3d",
   };

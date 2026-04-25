@@ -44,6 +44,16 @@ async def mark_wishlist_item_bought(wishlist_item_id: UUID) -> None:
         raise LookupError(f"unknown wishlist item {wishlist_item_id}")
 
 
+async def delete_wishlist_item(wishlist_item_id: UUID) -> None:
+    """Remove a wishlist row. Raises LookupError if no such item exists."""
+    pool = await ensure_pool()
+    removed = await product_searches_repo.delete_wishlist_item(
+        pool, wishlist_item_id
+    )
+    if removed is None:
+        raise LookupError(f"unknown wishlist item {wishlist_item_id}")
+
+
 async def list_wishlist_items(filter_: str | None = None) -> list[dict[str, Any]]:
     pool = await ensure_pool()
     rows = await product_searches_repo.list_wishlist_items(pool, filter_=filter_)

@@ -9,6 +9,7 @@ from app.api.wishlist.models import (
 )
 from app.services.wishlist import (
     add_candidate_to_wishlist,
+    delete_wishlist_item,
     list_wishlist_items,
     mark_wishlist_item_bought,
 )
@@ -61,5 +62,14 @@ async def mark_bought(wishlist_item_id: UUID) -> None:
     """Mark a wishlist item as purchased — stamps purchased_at = now()."""
     try:
         await mark_wishlist_item_bought(wishlist_item_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/{wishlist_item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_wishlist_item(wishlist_item_id: UUID) -> None:
+    """Remove a wishlist row entirely."""
+    try:
+        await delete_wishlist_item(wishlist_item_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

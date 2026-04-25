@@ -191,6 +191,21 @@ async def mark_wishlist_item_bought(
     )
 
 
+async def delete_wishlist_item(
+    pool: asyncpg.Pool, wishlist_item_id: UUID
+) -> UUID | None:
+    """Delete the wishlist row. Returns the id if a row was removed, None
+    if no such item exists."""
+    return await pool.fetchval(
+        """
+        DELETE FROM wishlist_items
+        WHERE id = $1
+        RETURNING id
+        """,
+        wishlist_item_id,
+    )
+
+
 async def list_product_candidates(
     pool: asyncpg.Pool,
     *,
