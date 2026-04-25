@@ -1,8 +1,44 @@
 import { useState, useEffect } from "react";
 import StatusBar from './StatusBar';
 import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
+import { api } from "../lib/api";
 
-const PRODUCTS = [
+// Match percentage — best result first, decreasing.
+function matchForPosition(position) {
+  if (position === 1) return 98;
+  if (position === 2) return 92;
+  if (position === 3) return 78;
+  return Math.max(60, 98 - (position - 1) * 10);
+}
+
+const ACCENTS = [
+  { color: "#1a3d28", accent: "#50dc78" }, // best
+  { color: "#1a2d20", accent: "#3ec46a" },
+  { color: "#162414", accent: "#2a9e50" },
+];
+
+// Backend CandidateResponse → ProductCard shape.
+function mapCandidate(c) {
+  const idx = Math.max(0, Math.min(2, (c.result_position ?? 1) - 1));
+  const palette = ACCENTS[idx];
+  const price =
+    c.current_price_text ||
+    (c.current_price_amount != null
+      ? `${c.currency_code === "EUR" ? "€" : c.currency_code || ""}${c.current_price_amount}`
+      : "—");
+  return {
+    id: c.id,
+    name: c.title || "Untitled",
+    store: c.merchant_name || "Online store",
+    price,
+    match: matchForPosition(c.result_position),
+    inStock: c.in_stock !== false,
+    color: palette.color,
+    accent: palette.accent,
+  };
+}
+
+const FALLBACK_PRODUCTS = [
   {
     id: 1,
     name: "Sony WH-1000XM5",
@@ -207,18 +243,62 @@ function ProductCard({ product, index, onSelect, selected, visible }) {
   );
 }
 
-export default function Candidates({ onNavigate }) {
+export default function Candidates({ onNavigate, searchId }) {
   const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
-  const [selected, setSelected] = useState(1); // default best deal
+  const [products, setProducts] = useState(null); // null = loading, [] = no results
+  const [selected, setSelected] = useState(null); // candidate UUID
   const [savePressed, setSavePressed] = useState(false);
   const [buyPressed, setBuyPressed] = useState(false);
   const [shimmer, setShimmer] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 60);
     return () => clearTimeout(t);
   }, []);
+
+  // Load real candidates if we have a searchId (came from /lens/scan).
+  // Otherwise fall back to the demo PRODUCTS array.
+  useEffect(() => {
+    if (!searchId) {
+      const fallback = FALLBACK_PRODUCTS;
+      setProducts(fallback);
+      setSelected(fallback[0]?.id ?? null);
+      return;
+    }
+    let cancelled = false;
+    api.getLensCandidates(searchId, 3)
+      .then((rows) => {
+        if (cancelled) return;
+        const mapped = rows.map(mapCandidate);
+        setProducts(mapped);
+        setSelected(mapped[0]?.id ?? null);
+      })
+      .catch((err) => {
+        console.error("getLensCandidates failed:", err);
+        if (!cancelled) setProducts([]);
+      });
+    return () => { cancelled = true; };
+  }, [searchId]);
+
+  const handleSave = async () => {
+    if (!selected || saving) return;
+    // Demo PRODUCTS use integer ids; only POST when we have a real UUID.
+    if (typeof selected !== "string") {
+      onNavigate?.("wishlist");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.addToWishlist({ productCandidateId: selected });
+      onNavigate?.("wishlist");
+    } catch (err) {
+      console.error("addToWishlist failed:", err);
+      alert(`Save failed: ${err.message || err}`);
+      setSaving(false);
+    }
+  };
 
   const handleSelect = (id) => {
     setSelected(id);
@@ -307,7 +387,7 @@ export default function Candidates({ onNavigate }) {
 
         {/* Cards */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {PRODUCTS.map((p, i) => (
+          {(products ?? []).map((p, i) => (
             <ProductCard
               key={p.id}
               product={p}
@@ -317,6 +397,11 @@ export default function Candidates({ onNavigate }) {
               visible={visible}
             />
           ))}
+          {products?.length === 0 && (
+            <div style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "30px 0" }}>
+              No matches found. Try a different photo.
+            </div>
+          )}
         </div>
 
         {/* Not what you're looking for */}
@@ -356,7 +441,8 @@ export default function Candidates({ onNavigate }) {
         }}>
           {/* Save to wishlist — solid green */}
           <button
-            onClick={() => onNavigate?.("wishlist")}
+            onClick={handleSave}
+            disabled={saving || !selected}
             onMouseDown={() => setSavePressed(true)}
             onMouseUp={() => setSavePressed(false)}
             onMouseLeave={() => setSavePressed(false)}
@@ -370,11 +456,12 @@ export default function Candidates({ onNavigate }) {
               background: savePressed ? "#3ab860" : "#50dc78",
               color: "#021208",
               fontSize: 15, fontWeight: 800,
-              cursor: "pointer",
+              cursor: saving ? "wait" : "pointer",
               letterSpacing: -0.2,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-              transform: savePressed ? "scale(0.96)" : "scale(1)",
+              transform: savePressed && !saving ? "scale(0.96)" : "scale(1)",
               transition: "all 0.12s",
+              opacity: saving ? 0.7 : 1,
             }}
           >
             <div style={{
@@ -386,7 +473,7 @@ export default function Candidates({ onNavigate }) {
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
               </svg>
             </div>
-            Save
+            {saving ? "Saving…" : "Save"}
           </button>
 
           {/* Buy selected — outlined dark */}

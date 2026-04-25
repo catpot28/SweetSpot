@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import StatusBar from './StatusBar';
 import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
+import { api } from "../lib/api";
 
 const STATUS_MESSAGES = [
   { text: "Recognizing product...", green: false },
@@ -21,17 +22,35 @@ function useInterval(cb, delay) {
   }, [delay]);
 }
 
-export default function Scanning({ onNavigate }) {
+export default function Scanning({ onNavigate, file, onSearchComplete }) {
   const isMobile = useIsMobile();
   const [statusIdx, setStatusIdx]   = useState(0);
   const [statusVis, setStatusVis]   = useState(true);
   const [dotFrame,  setDotFrame]    = useState(0);
 
-  // Auto-navigate after DURATION
+  // Run the real scan: upload file → POST /lens/scan → navigate to candidates
+  // with the resulting search_id. If no file (e.g. someone hit /scanning
+  // directly), fall back to the old fixed-timer demo behaviour.
   useEffect(() => {
-    const t = setTimeout(() => onNavigate?.("candidates"), DURATION);
-    return () => clearTimeout(t);
-  }, [onNavigate]);
+    let cancelled = false;
+    if (!file) {
+      const t = setTimeout(() => onNavigate?.("candidates"), DURATION);
+      return () => clearTimeout(t);
+    }
+    api.lensScan(file)
+      .then((res) => {
+        if (cancelled) return;
+        onSearchComplete?.(res.search_id);
+        onNavigate?.("candidates");
+      })
+      .catch((err) => {
+        console.error("/lens/scan failed:", err);
+        if (cancelled) return;
+        alert(`Scan failed: ${err.message || err}`);
+        onNavigate?.("find");
+      });
+    return () => { cancelled = true; };
+  }, [file, onNavigate, onSearchComplete]);
 
   // Cycle status messages every 700ms with fade
   useInterval(() => {

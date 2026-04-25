@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import StatusBar from './StatusBar';
 import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
-export default function FindItem({ onNavigate }) {
+export default function FindItem({ onNavigate, onFileCaptured }) {
   const isMobile = useIsMobile();
   const [mode, setMode] = useState("camera"); // "camera" | "screenshot"
   const [scanY, setScanY] = useState(0);
@@ -50,6 +50,7 @@ export default function FindItem({ onNavigate }) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file later
     if (!file) return;
+    onFileCaptured?.(file);   // hand the File up to App so Scanning can upload it
     setCaptured(true);
     setTimeout(() => {
       setCaptured(false);

@@ -66,6 +66,19 @@ export const api = {
   getLensCandidates: (searchId, limit = 3) =>
     request(`/lens/searches/${searchId}/candidates?limit=${limit}`),
 
+  // Multipart file upload — backend uploads to ImgBB, runs SerpApi, persists,
+  // returns { search_id, image_url, candidate_ids }.
+  lensScan: async (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${BASE_URL}/lens/scan`, { method: 'POST', body: fd });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`POST /lens/scan ${res.status}: ${text}`);
+    }
+    return res.json();
+  },
+
   // Wishlist
   getWishlist: () => request('/wishlist'),
 
