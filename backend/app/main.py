@@ -21,7 +21,8 @@ log = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     try:
         await init_pool()
-    except RuntimeError as e:
+        log.info("DB pool started OK")
+    except Exception as e:
         log.warning("DB pool not started: %s", e)
 
     log.info("token_set=%s  railway_url=%s", bool(settings.telegram_bot_token), settings.railway_public_url)
@@ -61,4 +62,5 @@ install_error_handlers(app)
 
 @app.get("/health", tags=["meta"])
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    from app.db.client import _pool
+    return {"status": "ok", "db": "connected" if _pool else "disconnected"}
