@@ -24,6 +24,13 @@ async def get_wishlist_items() -> list[WishlistItemResponse]:
     return [WishlistItemResponse(**item) for item in items]
 
 
+@router.get("/sweetspot", response_model=list[WishlistItemResponse])
+async def get_sweetspot_wishlist_items() -> list[WishlistItemResponse]:
+    """Wishlist items where sweet_spot has been confirmed true."""
+    items = await list_wishlist_items(filter_="sweetspot")
+    return [WishlistItemResponse(**item) for item in items]
+
+
 @router.get("/discount", response_model=list[WishlistItemResponse])
 async def get_discounted_wishlist_items() -> list[WishlistItemResponse]:
     """Wishlist items currently on discount (sweet_spot OR on_discount)."""

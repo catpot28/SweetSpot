@@ -81,8 +81,13 @@ export const api = {
 
   // Wishlist
   getWishlist: () => request('/wishlist'),
+  getWishlistSweetspot: () => request('/wishlist/sweetspot'),
   getWishlistDiscount: () => request('/wishlist/discount'),
   getWishlistBought: () => request('/wishlist/bought'),
+
+  // SweetSpot — scan all wishlist items, write results to DB
+  sweetspotWishlistScan: () =>
+    request('/sweetspot/wishlist-scan', { method: 'POST' }),
 
   markWishlistItemBought: (wishlistItemId) =>
     request(`/wishlist/${wishlistItemId}/buy`, { method: 'POST' }),
