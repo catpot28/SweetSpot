@@ -27,10 +27,14 @@ async def test_get_wishlist_items_returns_persisted_items(monkeypatch):
                 "wishlist_user_id": None,
                 "product_candidate_id": candidate_id,
                 "note": "saved",
+                "current_price_text": "$9.99",
+                "currency_code": "USD",
+                "stock_status": "In stock",
                 "on_discount": True,
                 "sweet_spot": False,
                 "reasoning": "Wait for a better drop",
                 "added_at": timestamp,
+                "purchased_at": None,
                 "candidate": {
                     "id": candidate_id,
                     "user_id": None,
@@ -68,6 +72,9 @@ async def test_get_wishlist_items_returns_persisted_items(monkeypatch):
     assert len(payload) == 1
     assert payload[0]["wishlist_item_id"] == str(wishlist_item_id)
     assert payload[0]["product_candidate_id"] == str(candidate_id)
+    assert payload[0]["current_price_text"] == "$9.99"
+    assert payload[0]["currency_code"] == "USD"
+    assert payload[0]["stock_status"] == "In stock"
     assert payload[0]["on_discount"] is True
     assert payload[0]["sweet_spot"] is False
     assert payload[0]["reasoning"] == "Wait for a better drop"

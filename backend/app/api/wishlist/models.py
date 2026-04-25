@@ -44,6 +44,9 @@ class WishlistItemResponse(BaseModel):
     wishlist_user_id: UUID | None
     product_candidate_id: UUID
     note: str | None
+    current_price_text: str | None = None
+    currency_code: str | None = None
+    stock_status: str | None = None
     on_discount: bool | None
     sweet_spot: bool | None
     reasoning: str | None
