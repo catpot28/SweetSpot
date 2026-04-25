@@ -26,11 +26,8 @@ _CURRENCY_SYMBOLS = {
 }
 
 
-async def search_products(image_url: str) -> ProductSearchResult:
-    """
-    Search Google Lens via SerpApi for product matches.
-    Persists the search metadata and top candidates for later selection.
-    """
+async def _call_serpapi(image_url: str) -> dict[str, Any]:
+    """Make the SerpApi HTTP call and return the raw response JSON."""
     params = {
         "engine": "google_lens",
         "url": image_url,
@@ -41,14 +38,28 @@ async def search_products(image_url: str) -> ProductSearchResult:
         "auto_crop": "true",
         "api_key": settings.serpapi_key,
     }
-
     async with httpx.AsyncClient(timeout=30) as client:
         res = await client.get(_SEARCH_URL, params=params)
         res.raise_for_status()
-        data = res.json()
+        return res.json()
 
+
+async def fetch_products(image_url: str) -> list[dict[str, Any]]:
+    """Call SerpApi and return the top 3 matches. No database interaction."""
+    data = await _call_serpapi(image_url)
+    log.info("SerpApi response keys: %s", list(data.keys()))
+    matches = _extract_matches(data)
+    log.info("fetch_products: %d matches for image_url=%s", len(matches), image_url)
+    return matches[:3]
+
+
+async def search_products(image_url: str) -> ProductSearchResult:
+    """
+    Search Google Lens via SerpApi for product matches.
+    Persists the search metadata and top candidates for later selection.
+    """
+    data = await _call_serpapi(image_url)
     log.info("SerpApi full response keys: %s", list(data.keys()))
-
     matches = _extract_matches(data)
     log.info("About to ensure DB pool for search persistence; image_url=%s matches=%d", image_url, len(matches))
     pool = await ensure_pool()

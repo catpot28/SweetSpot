@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.services.serpapi import search_products
+from app.services.serpapi import fetch_products
 
 router = APIRouter(prefix="/sweetspot", tags=["sweetspot"])
 log = logging.getLogger(__name__)
@@ -26,7 +26,6 @@ class ProductMatch(BaseModel):
 
 
 class SearchResponse(BaseModel):
-    product_search_id: str
     matches: list[ProductMatch]
 
 
@@ -35,16 +34,13 @@ async def search(body: SearchRequest) -> SearchResponse:
     """Run a Google Lens product search via SerpApi and return the top matches."""
     log.info("sweetspot/search: image_url=%s", body.image_url)
     try:
-        result = await search_products(body.image_url)
+        matches = await fetch_products(body.image_url)
     except Exception as exc:
         log.exception("SerpApi search failed")
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    log.info("sweetspot/search: %d matches for search_id=%s", len(result.matches), result.product_search_id)
-    return SearchResponse(
-        product_search_id=str(result.product_search_id),
-        matches=[_to_match(m) for m in result.matches],
-    )
+    log.info("sweetspot/search: %d matches", len(matches))
+    return SearchResponse(matches=[_to_match(m) for m in matches])
 
 
 def _to_match(m: dict[str, Any]) -> ProductMatch:
