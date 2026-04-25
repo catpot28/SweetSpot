@@ -135,8 +135,11 @@ def _select_top_candidates(
     *,
     limit: int,
 ) -> list[PersistableCandidate]:
-    selected: list[PersistableCandidate] = []
-    for index, match in enumerate(matches, start=1):
+    # Two-pass: first collect every match that has a parseable numeric price
+    # (skip news / social / no-price results), then sort by price ascending so
+    # the cheapest becomes result_position=1 (= "best deal").
+    priced: list[PersistableCandidate] = []
+    for match in matches:
         title = _as_non_empty_string(match.get("title"))
         product_url = _extract_product_url(match)
         if not title or not product_url:
@@ -153,10 +156,14 @@ def _select_top_candidates(
             raw_price if isinstance(raw_price, str) else (str(raw_price) if raw_price is not None else None)
         )
         price_amount, currency_code = _extract_price(match, price_text)
+        if price_amount is None:
+            # Honest mode: every displayed candidate must have a real price.
+            continue
+
         stock_status = _extract_stock_status(match)
-        selected.append(
+        priced.append(
             PersistableCandidate(
-                result_position=index,
+                result_position=0,  # filled in after sort
                 title=title,
                 product_url=product_url,
                 merchant_name=_as_non_empty_string(
@@ -171,6 +178,13 @@ def _select_top_candidates(
                 in_stock=_extract_in_stock(match, stock_status),
             )
         )
+
+    priced.sort(key=lambda c: c.current_price_amount)
+
+    selected: list[PersistableCandidate] = []
+    for index, c in enumerate(priced[:limit], start=1):
+        c.result_position = index  # frozen=False slots dataclass — mutable
+        selected.append(c)
         if len(selected) >= limit:
             break
     return selected
