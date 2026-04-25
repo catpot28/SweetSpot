@@ -115,6 +115,26 @@ async def test_create_wishlist_item_links_to_candidate():
 
 
 @pytest.mark.asyncio
+async def test_update_wishlist_analysis_preserves_reasoning_when_none():
+    expected_id = uuid4()
+    wishlist_item_id = uuid4()
+    pool = DummyPool(expected_id)
+
+    result = await product_searches_repo.update_wishlist_analysis(
+        pool,
+        wishlist_item_id=wishlist_item_id,
+        reasoning=None,
+        sweet_spot=True,
+    )
+
+    assert result == expected_id
+    _, args = pool.calls[0]
+    assert args[0] == wishlist_item_id
+    assert args[1] is None
+    assert args[2] is True
+
+
+@pytest.mark.asyncio
 async def test_list_product_candidates_orders_by_position_and_limit():
     pool = DummyPool(None)
 

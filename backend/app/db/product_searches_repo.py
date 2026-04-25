@@ -163,6 +163,28 @@ async def create_wishlist_item(
     )
 
 
+async def update_wishlist_analysis(
+    pool: asyncpg.Pool,
+    *,
+    wishlist_item_id: UUID,
+    reasoning: str | None,
+    sweet_spot: bool,
+) -> UUID | None:
+    return await pool.fetchval(
+        """
+        UPDATE wishlist_items
+        SET
+            reasoning = COALESCE($2, reasoning),
+            sweet_spot = $3
+        WHERE id = $1
+        RETURNING id
+        """,
+        wishlist_item_id,
+        reasoning,
+        sweet_spot,
+    )
+
+
 async def list_product_candidates(
     pool: asyncpg.Pool,
     *,

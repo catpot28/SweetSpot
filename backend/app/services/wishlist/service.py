@@ -39,6 +39,24 @@ async def list_wishlist_items() -> list[dict[str, Any]]:
     return [_record_to_wishlist_item(row) for row in rows]
 
 
+async def update_wishlist_analysis(
+    wishlist_item_id: UUID,
+    *,
+    reasoning: str | None,
+    sweet_spot: bool,
+) -> UUID:
+    pool = await ensure_pool()
+    updated_wishlist_item_id = await product_searches_repo.update_wishlist_analysis(
+        pool,
+        wishlist_item_id=wishlist_item_id,
+        reasoning=reasoning,
+        sweet_spot=sweet_spot,
+    )
+    if updated_wishlist_item_id is None:
+        raise LookupError(f"unknown wishlist item {wishlist_item_id}")
+    return updated_wishlist_item_id
+
+
 def _record_to_wishlist_item(row: Any) -> dict[str, Any]:
     return {
         "wishlist_item_id": row["wishlist_item_id"],

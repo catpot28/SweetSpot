@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
 class SearchRequest(BaseModel):
     image_url: str
+    wishlist_item_id: UUID | None = None
 
 
 class ProductMatch(BaseModel):
@@ -33,7 +36,7 @@ class ScoreBreakdown(BaseModel):
 class SearchResponse(BaseModel):
     sweetspot: bool
     score: int
-    reasoning: str
+    reasoning: str | None
     item_price: float
     disposable: float
     score_breakdown: ScoreBreakdown

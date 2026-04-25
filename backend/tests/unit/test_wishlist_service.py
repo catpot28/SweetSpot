@@ -66,3 +66,39 @@ async def test_list_wishlist_items_maps_joined_rows(monkeypatch):
     assert result[0]["candidate"]["current_price_text"] == "$10.99"
     assert result[0]["candidate"]["current_price_amount"] == Decimal("10.99")
     assert result[0]["candidate"]["stock_status"] == "In stock"
+
+
+@pytest.mark.asyncio
+async def test_update_wishlist_analysis_updates_reasoning_and_sweetspot(monkeypatch):
+    wishlist_item_id = uuid4()
+
+    async def fake_ensure_pool():
+        return object()
+
+    async def fake_update_wishlist_analysis_repo(
+        pool,
+        *,
+        wishlist_item_id: object,
+        reasoning: str | None,
+        sweet_spot: bool,
+    ):
+        assert wishlist_item_id is not None
+        assert reasoning == "Looks safe"
+        assert sweet_spot is True
+        return wishlist_item_id
+
+    monkeypatch.setattr("app.services.wishlist.service.ensure_pool", fake_ensure_pool)
+    monkeypatch.setattr(
+        "app.services.wishlist.service.product_searches_repo.update_wishlist_analysis",
+        fake_update_wishlist_analysis_repo,
+    )
+
+    from app.services.wishlist import update_wishlist_analysis
+
+    result = await update_wishlist_analysis(
+        wishlist_item_id,
+        reasoning="Looks safe",
+        sweet_spot=True,
+    )
+
+    assert result == wishlist_item_id
