@@ -61,33 +61,30 @@ async def webhook(request: Request):
         await send_message(chat_id, "✅ Image saved! Searching for similar products...")
 
         result = await search_products(image_url)
-        log.info("Persisted product search %s with %d candidates", result.product_search_id, len(result.candidate_ids))
+        log.info("[TG] search done: search_id=%s candidate_ids=%s", result.product_search_id, result.candidate_ids)
 
         if not result.candidate_ids:
             await send_message(chat_id, "🔍 No products found for this image.")
             return {"ok": True}
 
-        # Fetch the persisted DB rows — guaranteed ID/price consistency.
+        # Mirror the frontend Candidates flow: fetch DB rows, sort cheapest first.
+        log.info("[TG] fetching candidates from DB for search_id=%s", result.product_search_id)
         candidates = await list_candidates(result.product_search_id, limit=10)
-        log.info("Fetched %d candidates from DB for search %s", len(candidates), result.product_search_id)
+        log.info("[TG] got %d candidates: %s", len(candidates), [(c["id"], c.get("title"), c.get("current_price_amount")) for c in candidates])
 
         if not candidates:
             await send_message(chat_id, "🔍 No products found for this image.")
             return {"ok": True}
 
-        # Pick cheapest by current_price_amount; fall back to first candidate.
         cheapest = _pick_cheapest(candidates)
-        log.info(
-            "Cheapest candidate: id=%s title=%r price=%s",
-            cheapest["id"], cheapest.get("title"), cheapest.get("current_price_amount"),
-        )
+        log.info("[TG] adding candidate id=%s title=%r price=%s to wishlist", cheapest["id"], cheapest.get("title"), cheapest.get("current_price_amount"))
 
         wishlist_item_id = await add_candidate_to_wishlist(cheapest["id"])
-        log.info("Added candidate %s to wishlist as item %s", cheapest["id"], wishlist_item_id)
+        log.info("[TG] wishlist item created: wishlist_item_id=%s for candidate_id=%s", wishlist_item_id, cheapest["id"])
 
         reply = _format_added(cheapest, candidates)
     except Exception as e:
-        log.exception("Failed to process photo")
+        log.exception("[TG] FAILED to process photo: %s", e)
         reply = f"❌ Something went wrong: {e}"
 
     await send_message(chat_id, reply)
