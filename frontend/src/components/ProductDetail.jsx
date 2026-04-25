@@ -412,7 +412,7 @@ export default function ProductDetail({ onNavigate, product }) {
           overflowX: "hidden",
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "none",
-          paddingBottom: 100,
+          paddingBottom: "calc(110px + env(safe-area-inset-bottom))",
         }}
       >
         <div style={{ padding: "4px 20px 16px", display: "flex", alignItems: "center" }}>
@@ -703,7 +703,7 @@ export default function ProductDetail({ onNavigate, product }) {
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           borderTop: "1px solid rgba(255,255,255,0.08)",
-          padding: "14px 20px 28px",
+          padding: "14px 20px max(20px, env(safe-area-inset-bottom))",
           display: "flex",
           gap: 10,
           ...fadeIn(280),

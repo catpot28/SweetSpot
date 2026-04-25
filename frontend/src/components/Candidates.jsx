@@ -373,7 +373,7 @@ export default function Candidates({ onNavigate, searchId }) {
           overflowX: "hidden",
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "none",
-          padding: "0 20px 24px",
+          padding: "0 20px max(24px, env(safe-area-inset-bottom))",
           display: "flex",
           flexDirection: "column",
         }}
