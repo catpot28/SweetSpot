@@ -316,8 +316,10 @@ export default function ProductDetail({ onNavigate, product }) {
       });
       await api.confirmDraftPayment(draft.draft_id);
       // Mark the wishlist item as bought, if we came from the wishlist.
+      // The Wishlist screen passes the row with id = wishlist_item_id (UUID).
       // Best-effort: a failure here shouldn't block the success screen since
       // the BUNQ payment already executed.
+      const wishlistItemId = product?.id;
       if (wishlistItemId) {
         try {
           await api.markWishlistItemBought(wishlistItemId);
