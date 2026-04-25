@@ -104,7 +104,13 @@ function App() {
       )}
       {screen === 'detail' && <ProductDetail onNavigate={setScreen} product={selectedProduct} />}
       {screen === 'delete' && <DeleteConfirm onNavigate={setScreen} />}
-      {screen === 'success' && <PurchaseSuccess onNavigate={setScreen} />}
+      {screen === 'success' && (
+        <PurchaseSuccess
+          onNavigate={setScreen}
+          productName={selectedProduct?.name}
+          price={selectedProduct?.price}
+        />
+      )}
     </>
   )
 }

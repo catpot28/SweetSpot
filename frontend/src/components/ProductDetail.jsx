@@ -323,9 +323,15 @@ export default function ProductDetail({ onNavigate, product }) {
   const handleBuy = async () => {
     if (buying) return;
     setBuying(true);
+    // Charge the actual displayed price (parsed from "€299" → 299). Falls
+    // back to the demo €1 if the price string can't be parsed.
+    const parsedPrice = parsePriceNumber(detailProduct.price);
+    const amountEur = parsedPrice && parsedPrice > 0
+      ? parsedPrice.toFixed(2)
+      : PURCHASE_AMOUNT_EUR;
     try {
       const draft = await api.createDraftPayment({
-        amountEur: PURCHASE_AMOUNT_EUR,
+        amountEur,
         counterpartyEmail: PURCHASE_COUNTERPARTY,
         description: detailProduct.name || DEFAULT_PURCHASE_DESCRIPTION,
       });
