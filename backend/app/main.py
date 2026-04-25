@@ -29,18 +29,19 @@ async def lifespan(app: FastAPI):
     except Exception:
         log.exception("DB pool failed to initialize")
 
-    log.info("token_set=%s  railway_url=%s", bool(settings.telegram_bot_token), settings.railway_public_url)
+    base = settings.webhook_base_url
+    log.info("token_set=%s  webhook_base=%s", bool(settings.telegram_bot_token), base)
     try:
-        if settings.telegram_bot_token and settings.railway_public_url:
-            webhook_url = f"{settings.railway_public_url.rstrip('/')}/telegram/webhook"
+        if settings.telegram_bot_token and base:
+            webhook_url = f"{base}/telegram/webhook"
             async with httpx.AsyncClient() as client:
                 res = await client.post(
                     f"https://api.telegram.org/bot{settings.telegram_bot_token}/setWebhook",
                     json={"url": webhook_url},
                 )
-            log.info("setWebhook → %s", res.json())
+            log.info("setWebhook → %s (url=%s)", res.json(), webhook_url)
         else:
-            log.warning("Webhook NOT registered — set TELEGRAM_BOT_TOKEN and RAILWAY_PUBLIC_URL in Railway vars")
+            log.warning("Webhook NOT registered — set TELEGRAM_BOT_TOKEN and RAILWAY_STATIC_URL in Railway vars")
     except Exception:
         log.exception("Webhook registration failed — app will still start")
 

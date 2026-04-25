@@ -27,6 +27,16 @@ class Settings(BaseSettings):
     serpapi_key: str = ""
     anthropic_api_key: str = ""
     railway_public_url: str = ""
+    # Railway injects this automatically for every deployment.
+    railway_static_url: str = ""
+
+    @property
+    def webhook_base_url(self) -> str:
+        """Return the best available public URL for this deployment."""
+        return (
+            self.railway_static_url.rstrip("/")
+            or self.railway_public_url.rstrip("/")
+        )
 
 
 settings = Settings()
