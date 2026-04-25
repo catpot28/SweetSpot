@@ -230,7 +230,7 @@ function PriceChart({ data }) {
   );
 }
 
-export default function ProductDetail({ onNavigate }) {
+export default function ProductDetail({ onNavigate, wishlistItemId }) {
   const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
   const [buyPressed, setBuyPressed] = useState(false);
@@ -252,6 +252,16 @@ export default function ProductDetail({ onNavigate }) {
         description: PURCHASE_DESCRIPTION,
       });
       await api.confirmDraftPayment(draft.draft_id);
+      // Mark the wishlist item as bought, if we came from the wishlist.
+      // Best-effort: a failure here shouldn't block the success screen since
+      // the BUNQ payment already executed.
+      if (wishlistItemId) {
+        try {
+          await api.markWishlistItemBought(wishlistItemId);
+        } catch (e) {
+          console.error("markWishlistItemBought failed:", e);
+        }
+      }
       onNavigate("success");
     } catch (err) {
       console.error("buy failed:", err);

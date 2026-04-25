@@ -84,6 +84,9 @@ export const api = {
   getWishlistDiscount: () => request('/wishlist/discount'),
   getWishlistBought: () => request('/wishlist/bought'),
 
+  markWishlistItemBought: (wishlistItemId) =>
+    request(`/wishlist/${wishlistItemId}/buy`, { method: 'POST' }),
+
   addToWishlist: ({ productCandidateId, note, onDiscount, sweetSpot, reasoning }) =>
     request('/wishlist', {
       method: 'POST',

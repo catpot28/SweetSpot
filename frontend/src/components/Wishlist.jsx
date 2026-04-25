@@ -53,13 +53,16 @@ function StatusPill({ status }) {
   );
 }
 
-function ItemCard({ item, onNavigate, visible, delay }) {
+function ItemCard({ item, onNavigate, onSelectItem, visible, delay }) {
   const [pressed, setPressed] = useState(false);
   const discounted = item.original && item.original !== item.price;
 
   return (
     <div
-      onClick={() => onNavigate?.("detail")}
+      onClick={() => {
+        onSelectItem?.(item.id);
+        onNavigate?.("detail");
+      }}
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
       onMouseLeave={() => setPressed(false)}
@@ -167,7 +170,7 @@ function formatRelative(iso) {
   return `Added ${Math.round(days / 30)} months ago`;
 }
 
-export default function Wishlist({ onNavigate, initialFilter = "all" }) {
+export default function Wishlist({ onNavigate, onSelectItem, initialFilter = "all" }) {
   const isMobile = useIsMobile();
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [visible, setVisible] = useState(false);
@@ -302,6 +305,7 @@ export default function Wishlist({ onNavigate, initialFilter = "all" }) {
             key={`${item.id}-${activeFilter}`}
             item={item}
             onNavigate={onNavigate}
+            onSelectItem={onSelectItem}
             visible={visible}
             delay={i * 55}
           />

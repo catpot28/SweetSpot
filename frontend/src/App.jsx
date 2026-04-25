@@ -15,6 +15,9 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null)
   // Set after /lens/scan returns; passed to Candidates so it can fetch real results.
   const [searchId, setSearchId] = useState(null)
+  // Set when the user taps a Wishlist item; ProductDetail uses it to mark the
+  // item as bought after a successful BUNQ payment.
+  const [selectedWishlistItemId, setSelectedWishlistItemId] = useState(null)
   // Counts shown on home — one fetch per filter endpoint, refreshed on home mount.
   const [counts, setCounts] = useState({ all: 0, discount: 0, bought: 0 })
 
@@ -66,10 +69,21 @@ function App() {
           searchId={searchId}
         />
       )}
-      {screen === 'wishlist' && <Wishlist onNavigate={setScreen} />}
-      {screen === 'wishlist-discount' && <Wishlist onNavigate={setScreen} initialFilter="discount" />}
-      {screen === 'wishlist-bought' && <Wishlist onNavigate={setScreen} initialFilter="bought" />}
-      {screen === 'detail' && <ProductDetail onNavigate={setScreen} />}
+      {screen === 'wishlist' && (
+        <Wishlist onNavigate={setScreen} onSelectItem={setSelectedWishlistItemId} />
+      )}
+      {screen === 'wishlist-discount' && (
+        <Wishlist onNavigate={setScreen} onSelectItem={setSelectedWishlistItemId} initialFilter="discount" />
+      )}
+      {screen === 'wishlist-bought' && (
+        <Wishlist onNavigate={setScreen} onSelectItem={setSelectedWishlistItemId} initialFilter="bought" />
+      )}
+      {screen === 'detail' && (
+        <ProductDetail
+          onNavigate={setScreen}
+          wishlistItemId={selectedWishlistItemId}
+        />
+      )}
       {screen === 'delete' && <DeleteConfirm onNavigate={setScreen} />}
       {screen === 'success' && <PurchaseSuccess onNavigate={setScreen} />}
     </>
