@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
 const STATUS_MESSAGES = [
   { text: "Recognizing product...", green: false },
@@ -20,6 +21,7 @@ function useInterval(cb, delay) {
 }
 
 export default function Scanning({ onNavigate }) {
+  const isMobile = useIsMobile();
   const [statusIdx, setStatusIdx]   = useState(0);
   const [statusVis, setStatusVis]   = useState(true);
   const [dotFrame,  setDotFrame]    = useState(0);
@@ -48,20 +50,7 @@ export default function Scanning({ onNavigate }) {
   const currentStatus = STATUS_MESSAGES[statusIdx];
 
   return (
-    <div style={{
-      width: 375,
-      height: 812,
-      background: "#000",
-      borderRadius: 52,
-      overflow: "hidden",
-      position: "relative",
-      boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-      margin: "auto",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-    }}>
+    <div style={{ ...phoneFrame(isMobile), alignItems: "center", justifyContent: "center" }}>
 
       {/* Keyframes */}
       <style>{`

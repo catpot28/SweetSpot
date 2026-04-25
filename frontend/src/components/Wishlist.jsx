@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
 const ALL_ITEMS = [
   {
@@ -223,6 +224,7 @@ function ItemCard({ item, onNavigate, visible, delay }) {
 }
 
 export default function Wishlist({ onNavigate, initialFilter = "all" }) {
+  const isMobile = useIsMobile();
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [visible, setVisible] = useState(false);
 
@@ -245,18 +247,7 @@ export default function Wishlist({ onNavigate, initialFilter = "all" }) {
   }, []);
 
   return (
-    <div style={{
-      width: 375,
-      height: 812,
-      background: "#000",
-      borderRadius: 52,
-      overflow: "hidden",
-      position: "relative",
-      boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-      margin: "auto",
-      display: "flex",
-      flexDirection: "column",
-    }}>
+    <div style={phoneFrame(isMobile)}>
 
       {/* Status bar */}
       <div style={{

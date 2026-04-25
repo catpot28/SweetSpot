@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
 export default function FindItem({ onNavigate }) {
+  const isMobile = useIsMobile();
   const [mode, setMode] = useState("camera"); // "camera" | "screenshot"
   const [scanY, setScanY] = useState(0);
   const [glowIntensity, setGlowIntensity] = useState(0.4);
@@ -56,19 +58,7 @@ export default function FindItem({ onNavigate }) {
 
   // ─── Styles ──────────────────────────────────────────────────────────────
 
-  const phoneStyle = {
-    width: 375,
-    height: 812,
-    background: "#000",
-    borderRadius: 52,
-    overflow: "hidden",
-    position: "relative",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif",
-    boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-    margin: "auto",
-    display: "flex",
-    flexDirection: "column",
-  };
+  const phoneStyle = phoneFrame(isMobile);
 
   // Simulated camera background
   const cameraStyle = {

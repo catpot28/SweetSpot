@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 
 const PRODUCTS = [
   {
@@ -206,6 +207,7 @@ function ProductCard({ product, index, onSelect, selected, visible }) {
 }
 
 export default function Candidates({ onNavigate }) {
+  const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
   const [selected, setSelected] = useState(1); // default best deal
 
@@ -214,18 +216,7 @@ export default function Candidates({ onNavigate }) {
     return () => clearTimeout(t);
   }, []);
 
-  const phoneStyle = {
-    width: 375,
-    height: 812,
-    background: "#000",
-    borderRadius: 52,
-    overflow: "hidden",
-    position: "relative",
-    boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
-    margin: "auto",
-    display: "flex",
-    flexDirection: "column",
-  };
+  const phoneStyle = phoneFrame(isMobile);
 
   return (
     <div style={phoneStyle}>
