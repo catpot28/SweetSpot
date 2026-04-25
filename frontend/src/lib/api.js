@@ -107,6 +107,9 @@ export const api = {
       }),
     }),
 
+  // SweetSpot
+  getFinancials: () => request('/sweetspot/financials'),
+
   // SweetSpot — image_url in, scoring + matches out
   sweetspotSearch: (imageUrl) =>
     request('/sweetspot/search', {

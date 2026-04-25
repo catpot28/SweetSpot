@@ -33,6 +33,23 @@ log = logging.getLogger(__name__)
 ClientDep = Annotated[BunqClient, Depends(get_bunq_client)]
 
 
+@router.get("/financials", response_model=FinancialSummary)
+async def get_financials(client: ClientDep) -> FinancialSummary:
+    """Return the user's spending summary: balance, fixed/variable costs, disposable."""
+    balance_data = await ops.get_balance(client)
+    balance = Decimal(str(balance_data["value"]))
+    transactions = await ops.list_transactions(client, count=200)
+    summary = sweetspot.build_spending_summary(balance, transactions)
+    return FinancialSummary(
+        balance=float(summary.balance),
+        fixed_monthly=float(summary.fixed_monthly),
+        variable_monthly=float(summary.variable_monthly),
+        disposable=float(summary.disposable),
+        transaction_count=summary.transaction_count,
+        days_analyzed=summary.days_analyzed,
+    )
+
+
 @router.post("/search", response_model=SearchResponse)
 async def search(body: SearchRequest, client: ClientDep) -> SearchResponse:
     """Search SerpApi by image, score against user finances, return full result."""
