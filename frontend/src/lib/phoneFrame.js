@@ -44,6 +44,9 @@ export function phoneFrame(isMobile) {
       ...base,
       width: "100vw",
       height: "100vh",
+      // Reserve space for the real iOS status bar (transparent in PWA mode).
+      // env() returns 0 on browsers without safe-area insets, so harmless elsewhere.
+      paddingTop: "env(safe-area-inset-top)",
     };
   }
   return {
