@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import StatusBar from './StatusBar';
 import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
+import { api } from "../lib/api";
 
-export default function DeleteConfirm({ onNavigate, productName = "Sony WH-1000XM5" }) {
+export default function DeleteConfirm({ onNavigate, product, onDeleted }) {
   const isMobile = useIsMobile();
   const [show, setShow] = useState(false);
   const [sheetUp, setSheetUp] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const productName = product?.name || "this item";
 
   useEffect(() => {
     const t1 = setTimeout(() => setShow(true), 30);
@@ -14,15 +17,32 @@ export default function DeleteConfirm({ onNavigate, productName = "Sony WH-1000X
   }, []);
 
   const dismiss = () => {
+    if (deleting) return;
     setSheetUp(false);
     setShow(false);
     setTimeout(() => onNavigate?.("detail"), 280);
   };
 
-  const confirm = () => {
+  const confirm = async () => {
+    if (deleting) return;
+    const wishlistItemId = product?.id;
+    setDeleting(true);
+    if (wishlistItemId) {
+      try {
+        await api.deleteWishlistItem(wishlistItemId);
+      } catch (err) {
+        console.error("deleteWishlistItem failed:", err);
+        alert(`Remove failed: ${err.message}`);
+        setDeleting(false);
+        return;
+      }
+    }
     setSheetUp(false);
     setShow(false);
-    setTimeout(() => onNavigate?.("wishlist"), 280);
+    setTimeout(() => {
+      onDeleted?.();
+      onNavigate?.("wishlist");
+    }, 280);
   };
 
   return (
@@ -108,6 +128,7 @@ export default function DeleteConfirm({ onNavigate, productName = "Sony WH-1000X
         {/* Confirm remove button */}
         <button
           onClick={confirm}
+          disabled={deleting}
           style={{
             width: "100%",
             height: 54,
@@ -118,10 +139,12 @@ export default function DeleteConfirm({ onNavigate, productName = "Sony WH-1000X
             color: "#fff",
             fontSize: 16,
             fontWeight: 800,
-            cursor: "pointer",
+            cursor: deleting ? "wait" : "pointer",
             letterSpacing: -0.2,
             marginBottom: 12,
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            opacity: deleting ? 0.7 : 1,
+            filter: deleting ? "brightness(0.8)" : "none",
           }}
         >
           <div style={{
@@ -136,7 +159,7 @@ export default function DeleteConfirm({ onNavigate, productName = "Sony WH-1000X
               <path d="M9 6V4h6v2"/>
             </svg>
           </div>
-          Remove
+          {deleting ? "Removing..." : "Remove"}
         </button>
 
         {/* Keep watching button */}

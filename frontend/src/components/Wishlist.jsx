@@ -7,11 +7,13 @@ import { selectProductImage } from "../lib/productMedia";
 
 const FILTERS = [
   { key: "all", label: "All" },
+  { key: "sweetspot", label: "🎯 Sweet Spot" },
   { key: "discount", label: "On discount" },
   { key: "bought", label: "Bought" },
 ];
 
 const STATUS_PILL = {
+  sweetspot: { label: "🎯 Sweet Spot", bg: "#ffd234", color: "#1a1200" },
   discount: { label: "Deal found", bg: "#50dc78", color: "#021208" },
   watching: { label: "Watching", bg: "#d97706", color: "#1a0d00" },
   bought: { label: "Bought", bg: "#3a3a3a", color: "rgba(255,255,255,0.6)" },
@@ -169,6 +171,12 @@ function mapBackendItem(row) {
       ? `${candidate.currency_code === "EUR" ? "\u20ac" : candidate.currency_code || ""}${candidate.current_price_amount}`
       : "\u2014");
 
+  const isBought = row.purchased_at != null;
+  let status = "watching";
+  if (isBought) status = "bought";
+  else if (row.sweet_spot) status = "sweetspot";
+  else if (row.on_discount) status = "discount";
+
   return {
     id: row.wishlist_item_id,
     wishlistItemId: row.wishlist_item_id,
@@ -178,9 +186,13 @@ function mapBackendItem(row) {
     price,
     original: null,
     reasoning: row.reasoning || null,
-    status: row.sweet_spot ? "discount" : "watching",
+    status,
+    purchasedAt: row.purchased_at,
     inStock: candidate.in_stock,
     imageUrl: selectProductImage(candidate),
+    productUrl: candidate.product_url,
+    productCandidateId: candidate.id,
+    initialSearchId: candidate.initial_search_id,
     icon: "\ud83d\uded2",
     iconBg: row.sweet_spot ? "#1a3d28" : "#2a1a3d",
   };
@@ -201,17 +213,50 @@ export default function Wishlist({ onNavigate, onOpenItem, initialFilter = "all"
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [visible, setVisible] = useState(false);
   const [items, setItems] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
+
+  const runScan = async () => {
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const result = await api.sweetspotWishlistScan();
+      setScanResult(result);
+      // Refresh current list so updated sweet_spot values show immediately
+      const rows = await api.getWishlist();
+      setItems(
+        rows.map(mapBackendItem).filter((i) =>
+          activeFilter === "all" ? i.status !== "bought" : true
+        )
+      );
+    } catch (err) {
+      console.error("wishlist scan failed:", err);
+    } finally {
+      setScanning(false);
+    }
+  };
 
   useEffect(() => {
-    if (activeFilter !== "all") {
-      setItems([]);
-      return;
-    }
-
     let cancelled = false;
-    api.getWishlist()
+    const fetcher =
+      activeFilter === "sweetspot"
+        ? api.getWishlistSweetspot
+        : activeFilter === "discount"
+        ? api.getWishlistDiscount
+        : activeFilter === "bought"
+        ? api.getWishlistBought
+        : api.getWishlist;
+
+    fetcher()
       .then((rows) => {
-        if (!cancelled) setItems(rows.map(mapBackendItem));
+        if (cancelled) return;
+        const mapped = rows.map(mapBackendItem);
+        // The "All" view hides items already purchased — they live under "Bought".
+        const filtered =
+          activeFilter === "all"
+            ? mapped.filter((item) => item.status !== "bought")
+            : mapped;
+        setItems(filtered);
       })
       .catch((err) => {
         console.error("wishlist fetch failed:", err);
@@ -282,7 +327,28 @@ export default function Wishlist({ onNavigate, onOpenItem, initialFilter = "all"
         >
           Wishlist
         </span>
-        <div style={{ width: 36 }} />
+        <button
+          onClick={runScan}
+          disabled={scanning}
+          title="Scan for sweet spots"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            border: "none",
+            background: scanning ? "rgba(255,210,52,0.15)" : "rgba(255,210,52,0.1)",
+            color: "#ffd234",
+            fontSize: 16,
+            cursor: scanning ? "default" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background 0.2s",
+            flexShrink: 0,
+          }}
+        >
+          {scanning ? "⏳" : "🎯"}
+        </button>
       </div>
 
       <div
@@ -337,6 +403,23 @@ export default function Wishlist({ onNavigate, onOpenItem, initialFilter = "all"
       >
         {filterCount} items
       </div>
+
+      {scanResult && (
+        <div
+          style={{
+            margin: "8px 20px 0",
+            padding: "10px 14px",
+            background: "rgba(255,210,52,0.08)",
+            border: "1px solid rgba(255,210,52,0.2)",
+            borderRadius: 12,
+            color: "#ffd234",
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          🎯 {scanResult.sweet_spot_count} of {scanResult.items_scanned} items are in the Sweet Spot
+        </div>
+      )}
 
       <div
         style={{

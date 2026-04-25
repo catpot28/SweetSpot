@@ -113,6 +113,18 @@ async def create_product_candidate(
             in_stock
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ON CONFLICT (initial_search_id, result_position) DO UPDATE SET
+            title              = EXCLUDED.title,
+            merchant_name      = EXCLUDED.merchant_name,
+            product_url        = EXCLUDED.product_url,
+            product_image_url  = EXCLUDED.product_image_url,
+            thumbnail_url      = EXCLUDED.thumbnail_url,
+            price              = EXCLUDED.price,
+            current_price_amount = EXCLUDED.current_price_amount,
+            currency_code      = EXCLUDED.currency_code,
+            stock_status       = EXCLUDED.stock_status,
+            in_stock           = EXCLUDED.in_stock,
+            updated_at         = now()
         RETURNING id
         """,
         user_id,
@@ -188,6 +200,19 @@ async def mark_wishlist_item_bought(
     )
 
 
+async def delete_wishlist_item(
+    pool: asyncpg.Pool, wishlist_item_id: UUID
+) -> UUID | None:
+    """Delete the wishlist row. Returns the id if a row was removed, None
+    if no such item exists."""
+    return await pool.fetchval(
+        """
+        DELETE FROM wishlist_items
+        WHERE id = $1
+        RETURNING id
+        """,
+        wishlist_item_id,
+    )
 async def update_wishlist_analysis(
     pool: asyncpg.Pool,
     *,
@@ -277,9 +302,10 @@ async def get_product_candidate(
 
 
 _WISHLIST_FILTERS = {
-    None:       "",
-    "discount": "WHERE COALESCE(wi.sweet_spot, false) OR COALESCE(wi.on_discount, false)",
-    "bought":   "WHERE wi.purchased_at IS NOT NULL",
+    None:         "",
+    "sweetspot":  "WHERE wi.sweet_spot = true",
+    "discount":   "WHERE COALESCE(wi.sweet_spot, false) OR COALESCE(wi.on_discount, false)",
+    "bought":     "WHERE wi.purchased_at IS NOT NULL",
 }
 
 

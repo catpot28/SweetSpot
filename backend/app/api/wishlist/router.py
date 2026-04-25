@@ -9,6 +9,7 @@ from app.api.wishlist.models import (
 )
 from app.services.wishlist import (
     add_candidate_to_wishlist,
+    delete_wishlist_item,
     list_wishlist_items,
     mark_wishlist_item_bought,
 )
@@ -20,6 +21,13 @@ router = APIRouter(prefix="/wishlist", tags=["wishlist"])
 @router.get("", response_model=list[WishlistItemResponse])
 async def get_wishlist_items() -> list[WishlistItemResponse]:
     items = await list_wishlist_items()
+    return [WishlistItemResponse(**item) for item in items]
+
+
+@router.get("/sweetspot", response_model=list[WishlistItemResponse])
+async def get_sweetspot_wishlist_items() -> list[WishlistItemResponse]:
+    """Wishlist items where sweet_spot has been confirmed true."""
+    items = await list_wishlist_items(filter_="sweetspot")
     return [WishlistItemResponse(**item) for item in items]
 
 
@@ -61,5 +69,14 @@ async def mark_bought(wishlist_item_id: UUID) -> None:
     """Mark a wishlist item as purchased — stamps purchased_at = now()."""
     try:
         await mark_wishlist_item_bought(wishlist_item_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/{wishlist_item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_wishlist_item(wishlist_item_id: UUID) -> None:
+    """Remove a wishlist row entirely."""
+    try:
+        await delete_wishlist_item(wishlist_item_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

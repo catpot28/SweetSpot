@@ -7,15 +7,15 @@ import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
  * SmartWishlist
  *
  * Props:
- *   itemCount    {number}  — total items on wishlist         (default 24)
- *   totalSaved   {number}  — total euros saved               (default 847)
- *   savingsData  {Array<{month: string, value: number}>}     (default Jan–Apr)
- *   stats        {{ bought: number, onDiscount: number, allTime: number }}
+ *   itemCount       {number}  — total items on wishlist                       (default 24)
+ *   currentBalance  {number?} — live BUNQ balance for the "Current balance" pill; null = loading
+ *   stats           {{ bought: number, onDiscount: number, allTime: number }}
  */
 export default function SmartWishlist({
   onNavigate,
   itemCount = 24,
-  totalSaved = 847,
+  currentBalance = null,
+  disposable = null,
   stats = { bought: 17, onDiscount: 5, allTime: 42 },
 }) {
   const isMobile = useIsMobile();
@@ -266,18 +266,23 @@ export default function SmartWishlist({
             </div>
             <div>
               <div style={s.pillLabel}>Wishlist</div>
-              <div style={s.pillVal}>{itemCount} items</div>
+              <div style={{ ...s.pillVal, fontSize: 26, letterSpacing: -0.8, marginTop: 3 }}>{itemCount} items</div>
             </div>
             <span style={s.pillChevronPink}>›</span>
           </div>
-          {/* Total saved pill — green */}
-          <div style={s.statPillSavings}>
-            <div style={s.pillIconGreen}>
-              <span style={{ color: "#50dc78", fontSize: 24, fontWeight: 700, lineHeight: 1 }}>€</span>
+          {/* Balance + disposable — two stacked pods */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ background: "#0d1a10", borderRadius: 14, padding: "10px 14px" }}>
+              <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: 500 }}>Current balance</div>
+              <div style={{ color: "#50dc78", fontSize: 18, fontWeight: 800, letterSpacing: -0.5, marginTop: 2 }}>
+                {currentBalance == null ? "…" : `€${currentBalance.toFixed(2)}`}
+              </div>
             </div>
-            <div>
-              <div style={s.pillLabel}>Total saved</div>
-              <div style={s.pillValGreen}>€{totalSaved}</div>
+            <div style={{ background: "#0d1a10", borderRadius: 14, padding: "10px 14px" }}>
+              <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: 500 }}>Disposable</div>
+              <div style={{ color: disposable == null ? "rgba(255,255,255,0.25)" : disposable >= 0 ? "#ffd234" : "#f87171", fontSize: 18, fontWeight: 800, letterSpacing: -0.5, marginTop: 2 }}>
+                {disposable == null ? "…" : `€${disposable.toFixed(2)}`}
+              </div>
             </div>
           </div>
         </div>

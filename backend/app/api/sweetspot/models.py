@@ -42,3 +42,21 @@ class SearchResponse(BaseModel):
     score_breakdown: ScoreBreakdown
     financials: FinancialSummary
     matches: list[ProductMatch]
+
+
+class WishlistItemResult(BaseModel):
+    wishlist_item_id: str
+    title: str
+    sweet_spot: bool
+    score: int
+    tier: str
+    item_price: float | None
+    reasoning: str | None
+    updated: bool           # False if DB write failed
+
+
+class WishlistScanResponse(BaseModel):
+    items_scanned: int
+    sweet_spot_count: int
+    financials: FinancialSummary
+    results: list[WishlistItemResult]

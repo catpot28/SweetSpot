@@ -18,6 +18,9 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState(null)
   // Counts shown on home — one fetch per filter endpoint, refreshed on home mount.
   const [counts, setCounts] = useState({ all: 0, discount: 0, bought: 0 })
+  // Live BUNQ balance for the "Total saved" pill on home. null = loading.
+  const [balance, setBalance] = useState(null)
+  const [disposable, setDisposable] = useState(null)
 
   useEffect(() => {
     if (screen !== 'home') return
@@ -28,6 +31,12 @@ function App() {
     ]).then(([all, discount, bought]) =>
       setCounts({ all: all.length, discount: discount.length, bought: bought.length })
     )
+    api.getBalance()
+      .then((b) => setBalance(parseFloat(b.value)))
+      .catch((e) => console.error('balance fetch failed:', e))
+    api.getFinancials()
+      .then((f) => setDisposable(f.disposable))
+      .catch((e) => console.error('financials fetch failed:', e))
   }, [screen])
 
   const homeStats = {
@@ -41,8 +50,10 @@ function App() {
       {screen === 'home' && (
         <HomeScreen
           onNavigate={setScreen}
-          itemCount={counts.all}
+          itemCount={Math.max(0, counts.all - counts.bought)}
           stats={homeStats}
+          currentBalance={balance}
+          disposable={disposable}
         />
       )}
       {screen === 'find' && (
@@ -97,8 +108,20 @@ function App() {
         />
       )}
       {screen === 'detail' && <ProductDetail onNavigate={setScreen} product={selectedProduct} />}
-      {screen === 'delete' && <DeleteConfirm onNavigate={setScreen} />}
-      {screen === 'success' && <PurchaseSuccess onNavigate={setScreen} />}
+      {screen === 'delete' && (
+        <DeleteConfirm
+          onNavigate={setScreen}
+          product={selectedProduct}
+          onDeleted={() => setSelectedProduct(null)}
+        />
+      )}
+      {screen === 'success' && (
+        <PurchaseSuccess
+          onNavigate={setScreen}
+          productName={selectedProduct?.name}
+          price={selectedProduct?.price}
+        />
+      )}
     </>
   )
 }

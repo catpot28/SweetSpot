@@ -8,17 +8,35 @@ const PURCHASE_AMOUNT_EUR = "1.00";
 const PURCHASE_COUNTERPARTY = "sugardaddy@bunq.com";
 const DEFAULT_PURCHASE_DESCRIPTION = "Sony WH-1000XM5";
 
-const PRICE_HISTORY = [
-  { month: "Feb", value: 349 },
-  { month: "Mar", value: 329 },
-  { month: "Apr", value: 299 },
-];
+// Generate a 3-point ease-out "price drop" history ending at the current price.
+// Demo-only — no real historical data; the curve falls fast then flattens, which
+// looks like a typical product price coming down to a deal.
+const HISTORY_FACTORS = [1.20, 1.08, 1.00];
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const OTHER_STORES = [
-  { store: "bol.com", price: "\u20ac319", inStock: true },
-  { store: "Coolblue", price: "\u20ac339", inStock: true },
-  { store: "MediaMarkt", price: "\u20ac349", inStock: false },
-];
+function computePriceHistory(currentPrice) {
+  const safe = Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : 299;
+  const now = new Date();
+  return HISTORY_FACTORS.map((factor, i) => ({
+    month: MONTH_NAMES[(now.getMonth() - (HISTORY_FACTORS.length - 1 - i) + 12) % 12],
+    value: Math.round(safe * factor),
+  }));
+}
+
+function parsePriceNumber(priceText) {
+  if (typeof priceText !== "string") return null;
+  const match = priceText.replace(",", ".").match(/\d+(?:\.\d+)?/);
+  return match ? parseFloat(match[0]) : null;
+}
+
+function formatCandidatePrice(candidate) {
+  if (candidate?.current_price_text) return candidate.current_price_text;
+  if (candidate?.current_price_amount != null) {
+    const symbol = candidate.currency_code === "EUR" ? "\u20ac" : (candidate.currency_code || "");
+    return `${symbol}${candidate.current_price_amount}`;
+  }
+  return "\u2014";
+}
 
 const FALLBACK_PRODUCT = {
   name: "Sony WH-1000XM5",
@@ -296,6 +314,7 @@ export default function ProductDetail({ onNavigate, product }) {
   const [buyPressed, setBuyPressed] = useState(false);
   const [removePressed, setRemovePressed] = useState(false);
   const [buying, setBuying] = useState(false);
+  const [otherStores, setOtherStores] = useState([]);
   const detailProduct = product || FALLBACK_PRODUCT;
   const wishlistItemId = detailProduct.wishlistItemId || detailProduct.id || null;
   const stockKnown = typeof detailProduct.inStock === "boolean";
@@ -311,19 +330,60 @@ export default function ProductDetail({ onNavigate, product }) {
     return () => clearTimeout(timer);
   }, []);
 
+  // Fetch sibling product_candidates from the same search (DB-backed via
+  // GET /lens/searches/{id}/candidates). The set is what SerpApi returned for
+  // this image, persisted at scan time — no live search happens here.
+  useEffect(() => {
+    const searchId = product?.initialSearchId;
+    const selfId = product?.productCandidateId;
+    if (!searchId) {
+      setOtherStores([]);
+      return;
+    }
+    let cancelled = false;
+    api.getLensCandidates(searchId, 3)
+      .then((rows) => {
+        if (cancelled) return;
+        const siblings = rows
+          .filter((c) => c.id !== selfId)
+          .map((c) => ({
+            store: c.merchant_name || "Online store",
+            price: formatCandidatePrice(c),
+            inStock: c.in_stock,
+            url: c.product_url,
+          }));
+        setOtherStores(siblings);
+      })
+      .catch((err) => {
+        console.error("siblings fetch failed:", err);
+        if (!cancelled) setOtherStores([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product?.initialSearchId, product?.productCandidateId]);
+
   const handleBuy = async () => {
     if (buying) return;
     setBuying(true);
+    // Charge the actual displayed price (parsed from "€299" → 299). Falls
+    // back to the demo €1 if the price string can't be parsed.
+    const parsedPrice = parsePriceNumber(detailProduct.price);
+    const amountEur = parsedPrice && parsedPrice > 0
+      ? parsedPrice.toFixed(2)
+      : PURCHASE_AMOUNT_EUR;
     try {
       const draft = await api.createDraftPayment({
-        amountEur: PURCHASE_AMOUNT_EUR,
+        amountEur,
         counterpartyEmail: PURCHASE_COUNTERPARTY,
         description: detailProduct.name || DEFAULT_PURCHASE_DESCRIPTION,
       });
       await api.confirmDraftPayment(draft.draft_id);
       // Mark the wishlist item as bought, if we came from the wishlist.
+      // The Wishlist screen passes the row with id = wishlist_item_id (UUID).
       // Best-effort: a failure here shouldn't block the success screen since
       // the BUNQ payment already executed.
+      const wishlistItemId = product?.id;
       if (wishlistItemId) {
         try {
           await api.markWishlistItemBought(wishlistItemId);
@@ -465,7 +525,7 @@ export default function ProductDetail({ onNavigate, product }) {
           {divider}
 
           <div style={{ ...fadeIn(190), marginBottom: 22 }}>
-            <PriceChart data={PRICE_HISTORY} />
+            <PriceChart data={computePriceHistory(parsePriceNumber(detailProduct.price))} />
           </div>
 
           {divider}
@@ -567,6 +627,7 @@ export default function ProductDetail({ onNavigate, product }) {
 
           {divider}
 
+          {otherStores.length > 0 && (
           <div style={{ ...fadeIn(240) }}>
             <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 600, marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.5 }}>
               Also available at
@@ -579,19 +640,25 @@ export default function ProductDetail({ onNavigate, product }) {
                 border: "1px solid rgba(255,255,255,0.06)",
               }}
             >
-              {OTHER_STORES.map((store, index) => (
-                <div key={store.store}>
+              {otherStores.map((store, index) => {
+                const stockKnown = typeof store.inStock === "boolean";
+                const onClick = () => {
+                  if (store.url) window.open(store.url, "_blank", "noopener,noreferrer");
+                };
+                return (
+                <div key={`${store.store}-${index}`}>
                   {index > 0 && <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 16px" }} />}
                   <div
+                    onClick={onClick}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
                       padding: "14px 16px",
-                      cursor: "pointer",
+                      cursor: store.url ? "pointer" : "default",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       <div
                         style={{
                           width: 32,
@@ -601,6 +668,7 @@ export default function ProductDetail({ onNavigate, product }) {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
+                          flexShrink: 0,
                         }}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round">
@@ -608,23 +676,27 @@ export default function ProductDetail({ onNavigate, product }) {
                           <line x1="3" y1="6" x2="21" y2="6" />
                         </svg>
                       </div>
-                      <div>
-                        <div style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>{store.store}</div>
-                        {store.inStock ? (
-                          <div style={{ color: "#50dc78", fontSize: 11, fontWeight: 600, marginTop: 2 }}>In stock</div>
-                        ) : (
-                          <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 11, fontWeight: 500, marginTop: 2 }}>Out of stock</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ color: "#fff", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{store.store}</div>
+                        {stockKnown && (
+                          store.inStock ? (
+                            <div style={{ color: "#50dc78", fontSize: 11, fontWeight: 600, marginTop: 2 }}>In stock</div>
+                          ) : (
+                            <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 11, fontWeight: 500, marginTop: 2 }}>Out of stock</div>
+                          )
                         )}
                       </div>
                     </div>
-                    <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 16, fontWeight: 700, letterSpacing: -0.4 }}>
+                    <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 16, fontWeight: 700, letterSpacing: -0.4, flexShrink: 0, paddingLeft: 12 }}>
                       {store.price}
                     </span>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
+          )}
         </div>
       </div>
 

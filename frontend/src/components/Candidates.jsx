@@ -18,8 +18,10 @@ const ACCENTS = [
   { color: "#162414", accent: "#2a9e50" },
 ];
 
-function mapCandidate(candidate) {
-  const idx = Math.max(0, Math.min(2, (candidate.result_position ?? 1) - 1));
+function mapCandidate(candidate, displayIndex = 0) {
+  // Palette is driven by display order (cheapest = best-deal accent), not by
+  // SerpApi's visual-similarity result_position.
+  const idx = Math.max(0, Math.min(2, displayIndex));
   const palette = ACCENTS[idx];
   const price =
     candidate.current_price_text ||
@@ -293,7 +295,17 @@ export default function Candidates({ onNavigate, searchId }) {
     api.getLensCandidates(searchId, 3)
       .then((rows) => {
         if (cancelled) return;
-        const mapped = rows.map(mapCandidate);
+        // Sort by price ascending — cheapest becomes the "best deal" card.
+        // Items without a numeric price drift to the end.
+        const sorted = [...rows].sort((a, b) => {
+          const ap = a.current_price_amount;
+          const bp = b.current_price_amount;
+          if (ap == null && bp == null) return 0;
+          if (ap == null) return 1;
+          if (bp == null) return -1;
+          return Number(ap) - Number(bp);
+        });
+        const mapped = sorted.map((row, i) => mapCandidate(row, i));
         setProducts(mapped);
         setSelected(mapped[0]?.id ?? null);
       })
