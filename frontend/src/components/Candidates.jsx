@@ -379,8 +379,12 @@ export default function Candidates({ onNavigate, searchId }) {
               opacity: visible ? 1 : 0,
               transform: visible ? "none" : "translateY(8px)",
               transition: "opacity 0.4s 0.08s, transform 0.4s 0.08s",
+              maxWidth: 230,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}>
-              Sony WH-1000XM5
+              {products?.[0]?.name ?? ""}
             </div>
           </div>
         </div>
