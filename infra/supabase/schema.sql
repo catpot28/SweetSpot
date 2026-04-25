@@ -20,7 +20,7 @@ CREATE TABLE public.bunq_credentials (
 );
 CREATE TABLE public.product_candidates (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
+  user_id uuid,
   initial_search_id uuid NOT NULL,
   result_position integer NOT NULL CHECK (result_position > 0),
   title text NOT NULL,
@@ -39,13 +39,13 @@ CREATE TABLE public.product_candidates (
 );
 CREATE TABLE public.product_searches (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
+  user_id uuid,
   search_image_id uuid NOT NULL,
   engine text NOT NULL DEFAULT 'google_lens'::text CHECK (engine = 'google_lens'::text),
   search_type text NOT NULL DEFAULT 'products'::text CHECK (search_type = 'products'::text),
   image_url text NOT NULL CHECK (image_url ~* '^https?://'::text),
   language_code text NOT NULL DEFAULT 'en'::text,
-  country_code character NOT NULL CHECK (country_code ~ '^[A-Z]{2}$'::text),
+  country_code character(2) NOT NULL CHECK (country_code ~ '^[A-Z]{2}$'::text),
   safe_mode text NOT NULL DEFAULT 'active'::text,
   serpapi_search_id text UNIQUE,
   google_lens_url text CHECK (google_lens_url IS NULL OR google_lens_url ~* '^https?://'::text),
@@ -57,7 +57,7 @@ CREATE TABLE public.product_searches (
 );
 CREATE TABLE public.search_images (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
+  user_id uuid,
   image_url text NOT NULL CHECK (image_url ~* '^https?://'::text),
   mime_type text,
   width integer CHECK (width IS NULL OR width > 0),
@@ -68,7 +68,7 @@ CREATE TABLE public.search_images (
 );
 CREATE TABLE public.wishlist_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
+  user_id uuid,
   product_candidate_id uuid NOT NULL,
   note text,
   added_at timestamp with time zone NOT NULL DEFAULT now(),

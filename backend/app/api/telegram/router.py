@@ -54,8 +54,9 @@ async def webhook(request: Request):
 
         await send_message(chat_id, f"✅ Image saved! Searching for similar products...")
 
-        matches = await search_products(image_url)
-        reply = _format_matches(matches)
+        result = await search_products(image_url)
+        log.info("Persisted product search %s", result.product_search_id)
+        reply = _format_matches(result.matches)
     except Exception as e:
         log.exception("Failed to process photo")
         reply = f"❌ Something went wrong: {e}"
