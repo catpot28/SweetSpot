@@ -28,6 +28,7 @@ const FALLBACK_PRODUCT = {
   status: "discount",
   inStock: true,
   imageUrl: null,
+  reasoning: null,
 };
 
 const ANIM_DURATION = 1500;
@@ -296,9 +297,14 @@ export default function ProductDetail({ onNavigate, product }) {
   const [removePressed, setRemovePressed] = useState(false);
   const [buying, setBuying] = useState(false);
   const detailProduct = product || FALLBACK_PRODUCT;
+  const wishlistItemId = detailProduct.wishlistItemId || detailProduct.id || null;
   const stockKnown = typeof detailProduct.inStock === "boolean";
   const stockIn = detailProduct.inStock !== false;
   const statusLabel = getStatusLabel(detailProduct.status);
+  const reasoningText =
+    typeof detailProduct.reasoning === "string" && detailProduct.reasoning.trim()
+      ? detailProduct.reasoning.trim()
+      : "No saved reasoning yet for this item. Run the SweetSpot analysis to store a recommendation here.";
 
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), 60);
@@ -511,7 +517,7 @@ export default function ProductDetail({ onNavigate, product }) {
                 </div>
                 <div>
                   <div style={{ color: "#a78bfa", fontSize: 13, fontWeight: 700, letterSpacing: -0.1 }}>Best option right now</div>
-                  <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 11, marginTop: 1 }}>Based on price trends &amp; availability</div>
+                  <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 11, marginTop: 1 }}>Saved from the latest SweetSpot analysis</div>
                 </div>
               </div>
 
@@ -525,10 +531,11 @@ export default function ProductDetail({ onNavigate, product }) {
                 }}
               >
                 <div style={{ color: "#50dc78", fontSize: 14, fontWeight: 700, letterSpacing: -0.2, marginBottom: 4 }}>
-                  Buy now on Amazon.de - {"\u20ac"}299
+                  {detailProduct.store || "Saved recommendation"}
+                  {detailProduct.price ? ` - ${detailProduct.price}` : ""}
                 </div>
                 <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 1.5 }}>
-                  This is a 3-month low. Price has been dropping steadily and stock is available. Waiting longer is unlikely to yield a better deal.
+                  {reasoningText}
                 </div>
               </div>
 

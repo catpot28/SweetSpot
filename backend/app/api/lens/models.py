@@ -17,7 +17,6 @@ class CandidateResponse(BaseModel):
     product_url: str
     product_image_url: str | None
     thumbnail_url: str | None
-    current_price_text: str | None
     current_price_amount: Decimal | None
     currency_code: str | None
     stock_status: str | None

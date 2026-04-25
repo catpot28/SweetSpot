@@ -171,11 +171,13 @@ function mapBackendItem(row) {
 
   return {
     id: row.wishlist_item_id,
+    wishlistItemId: row.wishlist_item_id,
     name: candidate.title || "Untitled",
     store: candidate.merchant_name || "Online store",
     added: formatRelative(row.added_at),
     price,
     original: null,
+    reasoning: row.reasoning || null,
     status: row.sweet_spot ? "discount" : "watching",
     inStock: candidate.in_stock,
     imageUrl: selectProductImage(candidate),

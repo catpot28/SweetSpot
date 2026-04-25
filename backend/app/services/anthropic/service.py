@@ -13,11 +13,11 @@ _ANTHROPIC_VERSION = "2023-06-01"
 _MODEL = "claude-sonnet-4-20250514"
 
 _SYSTEM_PROMPT = (
-    "You write short, clear purchase guidance for a consumer app. "
+    "You write short, clear purchase offer for a consumer app. "
     "Given a SweetSpot affordability assessment, a Bunq-derived spending summary, "
-    "and the top product search matches, write 2-3 concise sentences in plain text. "
-    "Address the user directly, synthesize affordability and deal quality, and explain "
-    "whether buying now looks sensible. Do not use markdown, bullet points, or JSON."
+    "and the top product search matches, write 2-3 concise sentences in plain text about how abd why the wishlisted item is a perfect buy right now "
+    "Address the user directly and friendly, synthesize affordability and deal quality, and explain "
+    "whether buying now looks sensible based on their budget and the price. Do not use markdown, bullet points, or JSON. Do not give direct numeric internal metrics like in: 'score is below 0.8' sentence lis"
 )
 
 

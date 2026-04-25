@@ -106,7 +106,6 @@ async def test_search_products_persists_top_three_candidates(monkeypatch):
     assert created_candidates[0]["title"] == "One"
     assert created_candidates[0]["product_url"] == "https://shop.example.com/one"
     assert created_candidates[0]["merchant_name"] == "Shop One"
-    assert created_candidates[0]["current_price_text"] == "$10.50"
     assert str(created_candidates[0]["current_price_amount"]) == "10.50"
     assert created_candidates[0]["currency_code"] == "USD"
     assert created_candidates[0]["stock_status"] is None
