@@ -278,7 +278,7 @@ export default function SmartWishlist({
               <span style={{ color: "#50dc78", fontSize: 24, fontWeight: 700, lineHeight: 1 }}>€</span>
             </div>
             <div>
-              <div style={s.pillLabel}>Total saved</div>
+              <div style={s.pillLabel}>Current balance</div>
               <div style={s.pillValGreen}>
                 {currentBalance == null
                   ? "…"
