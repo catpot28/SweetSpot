@@ -1,68 +1,68 @@
 import { useState, useEffect } from "react";
-import StatusBar from './StatusBar';
+import StatusBar from "./StatusBar";
 import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
 import { api } from "../lib/api";
+import ProductMedia from "./ProductMedia";
+import { selectProductImage } from "../lib/productMedia";
 
-
-// "On discount" and "Bought" each get their own backend endpoint later;
-// for now only "All" returns real data (from GET /wishlist).
 const FILTERS = [
-  { key: "all",      label: "All" },
+  { key: "all", label: "All" },
   { key: "discount", label: "On discount" },
-  { key: "bought",   label: "Bought" },
+  { key: "bought", label: "Bought" },
 ];
 
 const STATUS_PILL = {
   discount: { label: "Deal found", bg: "#50dc78", color: "#021208" },
-  watching: { label: "Watching",   bg: "#d97706", color: "#1a0d00" },
-  bought:   { label: "✓ Bought",   bg: "#3a3a3a", color: "rgba(255,255,255,0.6)" },
-  planned:  { label: "Planned",    bg: "#1a3d82", color: "#8fb8ff" },
+  watching: { label: "Watching", bg: "#d97706", color: "#1a0d00" },
+  bought: { label: "Bought", bg: "#3a3a3a", color: "rgba(255,255,255,0.6)" },
+  planned: { label: "Planned", bg: "#1a3d82", color: "#8fb8ff" },
 };
 
-function ProductIcon({ emoji, bg }) {
+function ProductIconFallback({ emoji }) {
   return (
-    <div style={{
-      width: 52, height: 52,
-      borderRadius: 12,
-      background: bg,
-      flexShrink: 0,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: 24,
-      border: "1px solid rgba(255,255,255,0.06)",
-    }}>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 24,
+      }}
+    >
       {emoji}
     </div>
   );
 }
 
 function StatusPill({ status }) {
-  const s = STATUS_PILL[status] || STATUS_PILL.planned;
+  const badge = STATUS_PILL[status] || STATUS_PILL.planned;
+
   return (
-    <span style={{
-      background: s.bg,
-      color: s.color,
-      fontSize: 10,
-      fontWeight: 800,
-      borderRadius: 100,
-      padding: "2px 8px",
-      letterSpacing: 0.2,
-      flexShrink: 0,
-    }}>
-      {s.label}
+    <span
+      style={{
+        background: badge.bg,
+        color: badge.color,
+        fontSize: 10,
+        fontWeight: 800,
+        borderRadius: 100,
+        padding: "2px 8px",
+        letterSpacing: 0.2,
+        flexShrink: 0,
+      }}
+    >
+      {badge.label}
     </span>
   );
 }
 
-function ItemCard({ item, onNavigate, onSelectItem, visible, delay }) {
+function ItemCard({ item, onOpen, visible, delay }) {
   const [pressed, setPressed] = useState(false);
   const discounted = item.original && item.original !== item.price;
 
   return (
     <div
-      onClick={() => {
-        onSelectItem?.(item.id);
-        onNavigate?.("detail");
-      }}
+      onClick={() => onOpen?.(item)}
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
       onMouseLeave={() => setPressed(false)}
@@ -83,19 +83,35 @@ function ItemCard({ item, onNavigate, onSelectItem, visible, delay }) {
         transition: `opacity 0.38s ease ${delay}ms, transform 0.38s ease ${delay}ms, background 0.12s`,
       }}
     >
-      <ProductIcon emoji={item.icon} bg={item.iconBg} />
+      <ProductMedia
+        src={item.imageUrl}
+        alt={item.name}
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 12,
+          background: item.iconBg,
+          flexShrink: 0,
+          border: "1px solid rgba(255,255,255,0.06)",
+          padding: 4,
+          boxSizing: "border-box",
+        }}
+        fallback={<ProductIconFallback emoji={item.icon} />}
+      />
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          color: "#fff",
-          fontSize: 14,
-          fontWeight: 600,
-          letterSpacing: -0.2,
-          lineHeight: 1.3,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}>
+        <div
+          style={{
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 600,
+            letterSpacing: -0.2,
+            lineHeight: 1.3,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
           {item.name}
         </div>
         <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2, fontWeight: 500 }}>
@@ -106,31 +122,37 @@ function ItemCard({ item, onNavigate, onSelectItem, visible, delay }) {
         </div>
       </div>
 
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        gap: 5,
-        flexShrink: 0,
-      }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: 5,
+          flexShrink: 0,
+        }}
+      >
         {discounted && (
-          <div style={{
-            color: "rgba(255,255,255,0.3)",
-            fontSize: 12,
-            fontWeight: 500,
-            textDecoration: "line-through",
-            lineHeight: 1,
-          }}>
+          <div
+            style={{
+              color: "rgba(255,255,255,0.3)",
+              fontSize: 12,
+              fontWeight: 500,
+              textDecoration: "line-through",
+              lineHeight: 1,
+            }}
+          >
             {item.original}
           </div>
         )}
-        <div style={{
-          color: item.status === "bought" ? "rgba(255,255,255,0.4)" : "#50dc78",
-          fontSize: 18,
-          fontWeight: 800,
-          letterSpacing: -0.7,
-          lineHeight: 1,
-        }}>
+        <div
+          style={{
+            color: item.status === "bought" ? "rgba(255,255,255,0.4)" : "#50dc78",
+            fontSize: 18,
+            fontWeight: 800,
+            letterSpacing: -0.7,
+            lineHeight: 1,
+          }}
+        >
           {item.price}
         </div>
         <StatusPill status={item.status} />
@@ -139,28 +161,30 @@ function ItemCard({ item, onNavigate, onSelectItem, visible, delay }) {
   );
 }
 
-// Map a backend /wishlist row → the shape ItemCard expects.
 function mapBackendItem(row) {
-  const c = row.candidate || {};
+  const candidate = row.candidate || {};
   const price =
-    c.current_price_text ||
-    (c.current_price_amount != null
-      ? `${c.currency_code === "EUR" ? "€" : c.currency_code || ""}${c.current_price_amount}`
-      : "—");
+    candidate.current_price_text ||
+    (candidate.current_price_amount != null
+      ? `${candidate.currency_code === "EUR" ? "\u20ac" : candidate.currency_code || ""}${candidate.current_price_amount}`
+      : "\u2014");
+
   return {
     id: row.wishlist_item_id,
-    name: c.title || "Untitled",
-    store: c.merchant_name || "Online store",
+    name: candidate.title || "Untitled",
+    store: candidate.merchant_name || "Online store",
     added: formatRelative(row.added_at),
     price,
     original: null,
     status: row.sweet_spot ? "discount" : "watching",
-    icon: "🛒",
+    inStock: candidate.in_stock,
+    imageUrl: selectProductImage(candidate),
+    icon: "\ud83d\uded2",
     iconBg: row.sweet_spot ? "#1a3d28" : "#2a1a3d",
   };
 }
 
-function formatRelative(iso) {
+export function formatRelative(iso) {
   if (!iso) return "Added recently";
   const days = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86400000));
   if (days === 0) return "Added today";
@@ -170,92 +194,112 @@ function formatRelative(iso) {
   return `Added ${Math.round(days / 30)} months ago`;
 }
 
-export default function Wishlist({ onNavigate, onSelectItem, initialFilter = "all" }) {
+export default function Wishlist({ onNavigate, onOpenItem, initialFilter = "all" }) {
   const isMobile = useIsMobile();
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [visible, setVisible] = useState(false);
-  const [items, setItems] = useState(null); // null = loading
+  const [items, setItems] = useState(null);
 
-  // Only the "all" filter has a real endpoint right now.
   useEffect(() => {
     if (activeFilter !== "all") {
       setItems([]);
       return;
     }
+
     let cancelled = false;
     api.getWishlist()
-      .then((rows) => { if (!cancelled) setItems(rows.map(mapBackendItem)); })
+      .then((rows) => {
+        if (!cancelled) setItems(rows.map(mapBackendItem));
+      })
       .catch((err) => {
         console.error("wishlist fetch failed:", err);
         if (!cancelled) setItems([]);
       });
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeFilter]);
 
   const filtered = items ?? [];
   const filterCount = filtered.length;
 
-  // Trigger entrance animation on mount + filter change
   useEffect(() => {
     setVisible(false);
-    const t = setTimeout(() => setVisible(true), 40);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setVisible(true), 40);
+    return () => clearTimeout(timer);
   }, [activeFilter]);
 
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 60);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setVisible(true), 60);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
     <div style={phoneFrame(isMobile)}>
-
       <StatusBar />
 
-      {/* Top bar: back + title */}
-      <div style={{
-        flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "4px 20px 0",
-        position: "relative",
-      }}>
+      <div
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "4px 20px 0",
+          position: "relative",
+        }}
+      >
         <div
           onClick={() => onNavigate?.("home")}
           style={{
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             borderRadius: "50%",
             background: "rgba(255,255,255,0.08)",
             border: "1px solid rgba(255,255,255,0.1)",
-            display: "flex", alignItems: "center", justifyContent: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             cursor: "pointer",
           }}
         >
           <svg width="9" height="16" viewBox="0 0 9 16" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="8,1 1,8 8,15"/>
+            <polyline points="8,1 1,8 8,15" />
           </svg>
         </div>
-        <span style={{ color: "#fff", fontSize: 20, fontWeight: 700, letterSpacing: -0.4, position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+        <span
+          style={{
+            color: "#fff",
+            fontSize: 20,
+            fontWeight: 700,
+            letterSpacing: -0.4,
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+        >
           Wishlist
         </span>
         <div style={{ width: 36 }} />
       </div>
 
-      {/* Filter pills */}
-      <div style={{
-        flexShrink: 0,
-        display: "flex",
-        gap: 8,
-        padding: "18px 20px 0",
-        overflowX: "auto",
-        scrollbarWidth: "none",
-        WebkitOverflowScrolling: "touch",
-      }}>
-        {FILTERS.map((f) => {
-          const active = activeFilter === f.key;
+      <div
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          gap: 8,
+          padding: "18px 20px 0",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        {FILTERS.map((filter) => {
+          const active = activeFilter === filter.key;
           return (
             <button
-              key={f.key}
-              onClick={() => setActiveFilter(f.key)}
+              key={filter.key}
+              onClick={() => setActiveFilter(filter.key)}
               style={{
                 flexShrink: 0,
                 height: 34,
@@ -272,52 +316,57 @@ export default function Wishlist({ onNavigate, onSelectItem, initialFilter = "al
                 whiteSpace: "nowrap",
               }}
             >
-              {f.label}
+              {filter.label}
             </button>
           );
         })}
       </div>
 
-      {/* Count label */}
-      <div style={{
-        flexShrink: 0,
-        color: "rgba(255,255,255,0.28)",
-        fontSize: 12,
-        fontWeight: 600,
-        padding: "12px 20px 6px",
-        letterSpacing: 0.2,
-        textTransform: "uppercase",
-      }}>
+      <div
+        style={{
+          flexShrink: 0,
+          color: "rgba(255,255,255,0.28)",
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "12px 20px 6px",
+          letterSpacing: 0.2,
+          textTransform: "uppercase",
+        }}
+      >
         {filterCount} items
       </div>
 
-      {/* Scrollable list */}
-      <div style={{
-        flex: 1,
-        overflowY: "auto",
-        overflowX: "hidden",
-        WebkitOverflowScrolling: "touch",
-        scrollbarWidth: "none",
-        padding: "4px 20px 20px",
-      }}>
-        {filtered.length > 0 ? filtered.map((item, i) => (
-          <ItemCard
-            key={`${item.id}-${activeFilter}`}
-            item={item}
-            onNavigate={onNavigate}
-            onSelectItem={onSelectItem}
-            visible={visible}
-            delay={i * 55}
-          />
-        )) : (
-          <div style={{
-            textAlign: "center",
-            color: "rgba(255,255,255,0.25)",
-            fontSize: 14,
-            paddingTop: 60,
-            opacity: visible ? 1 : 0,
-            transition: "opacity 0.4s",
-          }}>
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
+          padding: "4px 20px 20px",
+        }}
+      >
+        {filtered.length > 0 ? (
+          filtered.map((item, index) => (
+            <ItemCard
+              key={`${item.id}-${activeFilter}`}
+              item={item}
+              onOpen={onOpenItem}
+              visible={visible}
+              delay={index * 55}
+            />
+          ))
+        ) : (
+          <div
+            style={{
+              textAlign: "center",
+              color: "rgba(255,255,255,0.25)",
+              fontSize: 14,
+              paddingTop: 60,
+              opacity: visible ? 1 : 0,
+              transition: "opacity 0.4s",
+            }}
+          >
             No items here yet
           </div>
         )}

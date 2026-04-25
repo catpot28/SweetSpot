@@ -15,9 +15,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null)
   // Set after /lens/scan returns; passed to Candidates so it can fetch real results.
   const [searchId, setSearchId] = useState(null)
-  // Set when the user taps a Wishlist item; ProductDetail uses it to mark the
-  // item as bought after a successful BUNQ payment.
-  const [selectedWishlistItemId, setSelectedWishlistItemId] = useState(null)
+  const [selectedProduct, setSelectedProduct] = useState(null)
   // Counts shown on home — one fetch per filter endpoint, refreshed on home mount.
   const [counts, setCounts] = useState({ all: 0, discount: 0, bought: 0 })
 
@@ -70,20 +68,35 @@ function App() {
         />
       )}
       {screen === 'wishlist' && (
-        <Wishlist onNavigate={setScreen} onSelectItem={setSelectedWishlistItemId} />
-      )}
-      {screen === 'wishlist-discount' && (
-        <Wishlist onNavigate={setScreen} onSelectItem={setSelectedWishlistItemId} initialFilter="discount" />
-      )}
-      {screen === 'wishlist-bought' && (
-        <Wishlist onNavigate={setScreen} onSelectItem={setSelectedWishlistItemId} initialFilter="bought" />
-      )}
-      {screen === 'detail' && (
-        <ProductDetail
+        <Wishlist
           onNavigate={setScreen}
-          wishlistItemId={selectedWishlistItemId}
+          onOpenItem={(item) => {
+            setSelectedProduct(item)
+            setScreen('detail')
+          }}
         />
       )}
+      {screen === 'wishlist-discount' && (
+        <Wishlist
+          onNavigate={setScreen}
+          onOpenItem={(item) => {
+            setSelectedProduct(item)
+            setScreen('detail')
+          }}
+          initialFilter="discount"
+        />
+      )}
+      {screen === 'wishlist-bought' && (
+        <Wishlist
+          onNavigate={setScreen}
+          onOpenItem={(item) => {
+            setSelectedProduct(item)
+            setScreen('detail')
+          }}
+          initialFilter="bought"
+        />
+      )}
+      {screen === 'detail' && <ProductDetail onNavigate={setScreen} product={selectedProduct} />}
       {screen === 'delete' && <DeleteConfirm onNavigate={setScreen} />}
       {screen === 'success' && <PurchaseSuccess onNavigate={setScreen} />}
     </>
