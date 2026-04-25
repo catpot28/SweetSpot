@@ -137,6 +137,9 @@ async def create_wishlist_item(
     product_candidate_id: UUID,
     user_id: UUID | None = None,
     note: str | None = None,
+    current_price_text: str | None = None,
+    currency_code: str | None = None,
+    stock_status: str | None = None,
     on_discount: bool | None = None,
     sweet_spot: bool | None = None,
     reasoning: str | None = None,
@@ -147,16 +150,22 @@ async def create_wishlist_item(
             user_id,
             product_candidate_id,
             note,
+            current_price_text,
+            currency_code,
+            stock_status,
             on_discount,
             sweet_spot,
             reasoning
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id
         """,
         user_id,
         product_candidate_id,
         note,
+        current_price_text,
+        currency_code,
+        stock_status,
         on_discount,
         sweet_spot,
         reasoning,
@@ -176,6 +185,28 @@ async def mark_wishlist_item_bought(
         RETURNING id
         """,
         wishlist_item_id,
+    )
+
+
+async def update_wishlist_analysis(
+    pool: asyncpg.Pool,
+    *,
+    wishlist_item_id: UUID,
+    reasoning: str | None,
+    sweet_spot: bool,
+) -> UUID | None:
+    return await pool.fetchval(
+        """
+        UPDATE wishlist_items
+        SET
+            reasoning = COALESCE($2, reasoning),
+            sweet_spot = $3
+        WHERE id = $1
+        RETURNING id
+        """,
+        wishlist_item_id,
+        reasoning,
+        sweet_spot,
     )
 
 
@@ -264,6 +295,9 @@ async def list_wishlist_items(
             wi.user_id AS wishlist_user_id,
             wi.product_candidate_id,
             wi.note,
+            wi.current_price_text,
+            wi.currency_code,
+            wi.stock_status,
             wi.on_discount,
             wi.sweet_spot,
             wi.reasoning,
@@ -278,10 +312,10 @@ async def list_wishlist_items(
             pc.product_url,
             pc.product_image_url,
             pc.thumbnail_url,
-            pc.price AS current_price_text,
+            pc.price AS candidate_current_price_text,
             pc.current_price_amount,
-            pc.currency_code,
-            pc.stock_status,
+            pc.currency_code AS candidate_currency_code,
+            pc.stock_status AS candidate_stock_status,
             pc.in_stock,
             pc.created_at,
             pc.updated_at
