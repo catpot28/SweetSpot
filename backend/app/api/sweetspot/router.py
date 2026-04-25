@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
+import re
+from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -94,8 +95,7 @@ async def search(body: SearchRequest, client: ClientDep) -> SearchResponse:
     log.info("sweetspot/search: fixed_monthly=%.2f variable_monthly=%.2f disposable=%.2f",
              summary.fixed_monthly, summary.variable_monthly, summary.disposable)
 
-    prices = [m["extracted_price"] for m in matches
-              if isinstance(m.get("extracted_price"), (int, float)) and m["extracted_price"] > 0]
+    prices = [p for m in matches if (p := _parse_price(m)) is not None]
 
     return SearchResponse(
         prices=prices,
@@ -144,15 +144,32 @@ async def score(body: ScoreRequest, client: ClientDep) -> ScoreResponse:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _to_match(m: dict[str, Any]) -> ProductMatch:
+def _parse_price(m: dict[str, Any]) -> float | None:
+    """Extract a numeric price from a match — prefers extracted_price, falls back to parsing the price string."""
     ep = m.get("extracted_price")
+    if isinstance(ep, (int, float)) and not isinstance(ep, bool) and ep > 0:
+        return float(ep)
+    raw = m.get("price")
+    if isinstance(raw, dict):
+        raw = raw.get("value") or raw.get("extracted_value")
+    if raw:
+        match = re.search(r"[\d]+(?:[.,]\d+)?", str(raw).replace(",", "."))
+        if match:
+            try:
+                return float(Decimal(match.group().replace(",", ".")))
+            except InvalidOperation:
+                pass
+    return None
+
+
+def _to_match(m: dict[str, Any]) -> ProductMatch:
     raw_price = m.get("price")
     if isinstance(raw_price, dict):
         raw_price = raw_price.get("value") or raw_price.get("extracted_value") or str(raw_price)
     return ProductMatch(
         title=m.get("title"),
         price=str(raw_price) if raw_price is not None else None,
-        extracted_price=float(ep) if isinstance(ep, (int, float)) and not isinstance(ep, bool) else None,
+        extracted_price=_parse_price(m),
         link=m.get("link") or m.get("product_link"),
         thumbnail=m.get("thumbnail"),
     )
