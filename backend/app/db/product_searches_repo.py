@@ -289,9 +289,10 @@ async def get_product_candidate(
 
 
 _WISHLIST_FILTERS = {
-    None:       "",
-    "discount": "WHERE COALESCE(wi.sweet_spot, false) OR COALESCE(wi.on_discount, false)",
-    "bought":   "WHERE wi.purchased_at IS NOT NULL",
+    None:         "",
+    "sweetspot":  "WHERE wi.sweet_spot = true",
+    "discount":   "WHERE COALESCE(wi.sweet_spot, false) OR COALESCE(wi.on_discount, false)",
+    "bought":     "WHERE wi.purchased_at IS NOT NULL",
 }
 
 
