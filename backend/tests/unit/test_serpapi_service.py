@@ -106,8 +106,11 @@ async def test_search_products_persists_top_three_candidates(monkeypatch):
     assert created_candidates[0]["title"] == "One"
     assert created_candidates[0]["product_url"] == "https://shop.example.com/one"
     assert created_candidates[0]["merchant_name"] == "Shop One"
+    assert created_candidates[0]["current_price_text"] == "$10.50"
     assert str(created_candidates[0]["current_price_amount"]) == "10.50"
     assert created_candidates[0]["currency_code"] == "USD"
+    assert created_candidates[0]["stock_status"] is None
+    assert created_candidates[0]["in_stock"] is True
     assert created_candidates[1]["result_position"] == 2
     assert created_candidates[2]["result_position"] == 3
 
@@ -134,6 +137,7 @@ async def test_search_products_uses_fallback_results_when_visual_matches_missing
     async def fake_create_product_candidate(pool, **kwargs):
         assert kwargs["title"] == "Fallback One"
         assert kwargs["product_url"] == "https://shop.example.com/fallback-one"
+        assert kwargs["stock_status"] is None
         return uuid4()
 
     monkeypatch.setattr("app.services.serpapi.serpservice.httpx.AsyncClient", FakeAsyncClient)
@@ -228,8 +232,10 @@ async def test_list_candidates_returns_records_sorted_from_repo(monkeypatch):
                 "product_url": "https://shop.example.com/one",
                 "product_image_url": "https://img.example.com/one.jpg",
                 "thumbnail_url": "https://img.example.com/one-thumb.jpg",
+                "current_price_text": None,
                 "current_price_amount": None,
                 "currency_code": None,
+                "stock_status": None,
                 "in_stock": True,
                 "created_at": timestamp,
                 "updated_at": timestamp,

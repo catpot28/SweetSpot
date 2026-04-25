@@ -71,8 +71,10 @@ async def test_create_product_candidate_links_to_initial_search():
         product_url="https://shop.example.com/item",
         user_id=None,
         merchant_name="Example Shop",
+        current_price_text="$19.99",
         current_price_amount=Decimal("19.99"),
         currency_code="USD",
+        stock_status="In stock",
     )
 
     assert result == expected_id
@@ -82,8 +84,10 @@ async def test_create_product_candidate_links_to_initial_search():
     assert args[2] == 1
     assert args[3] == "Candidate Title"
     assert args[5] == "https://shop.example.com/item"
-    assert args[8] == Decimal("19.99")
-    assert args[9] == "USD"
+    assert args[8] == "$19.99"
+    assert args[9] == Decimal("19.99")
+    assert args[10] == "USD"
+    assert args[11] == "In stock"
 
 
 @pytest.mark.asyncio
@@ -96,12 +100,18 @@ async def test_create_wishlist_item_links_to_candidate():
         pool,
         product_candidate_id=candidate_id,
         user_id=None,
+        on_discount=True,
+        sweet_spot=False,
+        reasoning="LLM says wait",
     )
 
     assert result == expected_id
     _, args = pool.calls[0]
     assert args[0] is None
     assert args[1] == candidate_id
+    assert args[3] is True
+    assert args[4] is False
+    assert args[5] == "LLM says wait"
 
 
 @pytest.mark.asyncio
@@ -146,3 +156,25 @@ async def test_get_product_candidate_queries_by_id():
     assert result is None
     _, args = pool.calls[0]
     assert args[0] == candidate_id
+
+
+@pytest.mark.asyncio
+async def test_list_wishlist_items_joins_candidates():
+    pool = DummyPool(None)
+
+    async def fetch(query, *args):
+        pool.calls.append((query, args))
+        return []
+
+    pool.fetch = fetch
+
+    result = await product_searches_repo.list_wishlist_items(pool)
+
+    assert result == []
+    query, args = pool.calls[0]
+    assert "FROM wishlist_items wi" in query
+    assert "JOIN product_candidates pc" in query
+    assert "wi.on_discount" in query
+    assert "wi.sweet_spot" in query
+    assert "wi.reasoning" in query
+    assert args == ()

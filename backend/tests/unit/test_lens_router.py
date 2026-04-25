@@ -32,8 +32,10 @@ async def test_get_candidates_returns_top_candidates(monkeypatch):
                 "product_url": "https://shop.example.com/one",
                 "product_image_url": "https://img.example.com/one.jpg",
                 "thumbnail_url": "https://img.example.com/one-thumb.jpg",
+                "current_price_text": "$10.99",
                 "current_price_amount": Decimal("10.99"),
                 "currency_code": "USD",
+                "stock_status": "In stock",
                 "in_stock": True,
                 "created_at": timestamp,
                 "updated_at": timestamp,
@@ -53,3 +55,5 @@ async def test_get_candidates_returns_top_candidates(monkeypatch):
     assert len(payload) == 1
     assert payload[0]["title"] == "Candidate One"
     assert payload[0]["result_position"] == 1
+    assert payload[0]["current_price_text"] == "$10.99"
+    assert payload[0]["stock_status"] == "In stock"

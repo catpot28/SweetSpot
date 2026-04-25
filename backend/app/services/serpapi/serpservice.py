@@ -93,8 +93,10 @@ async def search_products(image_url: str) -> ProductSearchResult:
             merchant_name=candidate.merchant_name,
             product_image_url=candidate.product_image_url,
             thumbnail_url=candidate.thumbnail_url,
+            current_price_text=candidate.current_price_text,
             current_price_amount=candidate.current_price_amount,
             currency_code=candidate.currency_code,
+            stock_status=candidate.stock_status,
             in_stock=candidate.in_stock,
         )
         candidate_ids.append(candidate_id)
@@ -137,7 +139,9 @@ def _select_top_candidates(
         if not title or not product_url:
             continue
 
-        price_amount, currency_code = _extract_price(match)
+        price_text = _as_non_empty_string(match.get("price"))
+        price_amount, currency_code = _extract_price(match, price_text)
+        stock_status = _extract_stock_status(match)
         selected.append(
             PersistableCandidate(
                 result_position=index,
@@ -148,9 +152,11 @@ def _select_top_candidates(
                 ),
                 product_image_url=_extract_image_url(match),
                 thumbnail_url=_as_non_empty_string(match.get("thumbnail")),
+                current_price_text=price_text,
                 current_price_amount=price_amount,
                 currency_code=currency_code,
-                in_stock=_extract_in_stock(match),
+                stock_status=stock_status,
+                in_stock=_extract_in_stock(match, stock_status),
             )
         )
         if len(selected) >= limit:
@@ -179,8 +185,10 @@ def _record_to_candidate(row: Any) -> dict[str, Any]:
         "product_url": row["product_url"],
         "product_image_url": row["product_image_url"],
         "thumbnail_url": row["thumbnail_url"],
+        "current_price_text": row["current_price_text"],
         "current_price_amount": row["current_price_amount"],
         "currency_code": row["currency_code"],
+        "stock_status": row["stock_status"],
         "in_stock": row["in_stock"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
@@ -203,12 +211,16 @@ def _extract_image_url(match: dict[str, Any]) -> str | None:
     return None
 
 
-def _extract_in_stock(match: dict[str, Any]) -> bool | None:
+def _extract_stock_status(match: dict[str, Any]) -> str | None:
+    return _as_non_empty_string(match.get("availability") or match.get("stock_status"))
+
+
+def _extract_in_stock(match: dict[str, Any], stock_status: str | None = None) -> bool | None:
     value = match.get("in_stock")
     if isinstance(value, bool):
         return value
 
-    availability = _as_non_empty_string(match.get("availability"))
+    availability = stock_status or _extract_stock_status(match)
     if not availability:
         return None
 
@@ -220,13 +232,15 @@ def _extract_in_stock(match: dict[str, Any]) -> bool | None:
     return None
 
 
-def _extract_price(match: dict[str, Any]) -> tuple[Decimal | None, str | None]:
+def _extract_price(
+    match: dict[str, Any],
+    price_text: str | None = None,
+) -> tuple[Decimal | None, str | None]:
     extracted_price = match.get("extracted_price")
     if isinstance(extracted_price, (int, float)) and not isinstance(extracted_price, bool):
         amount = Decimal(str(extracted_price))
-        return amount, _extract_currency_code(match)
+        return amount, _extract_currency_code(match, price_text)
 
-    price_text = _as_non_empty_string(match.get("price"))
     if not price_text:
         return None, None
 
