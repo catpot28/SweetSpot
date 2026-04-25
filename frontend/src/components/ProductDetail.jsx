@@ -419,6 +419,89 @@ export default function ProductDetail({ onNavigate }) {
 
           {divider}
 
+          {/* Claude Best Option Overview */}
+          <div style={{ ...fadeIn(220), marginBottom: 22 }}>
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 600, marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Claude's take
+            </div>
+            <div style={{
+              background: "linear-gradient(135deg, #0e1520 0%, #0a1018 100%)",
+              borderRadius: 16,
+              border: "1px solid rgba(139,92,246,0.25)",
+              padding: "16px 16px",
+              position: "relative",
+              overflow: "hidden",
+            }}>
+              {/* Subtle purple glow */}
+              <div style={{
+                position: "absolute",
+                width: 180, height: 180,
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)",
+                top: -60, right: -40,
+                pointerEvents: "none",
+              }} />
+
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 10,
+                  background: "rgba(139,92,246,0.15)",
+                  border: "1px solid rgba(139,92,246,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ color: "#a78bfa", fontSize: 13, fontWeight: 700, letterSpacing: -0.1 }}>Best option right now</div>
+                  <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 11, marginTop: 1 }}>Based on price trends & availability</div>
+                </div>
+              </div>
+
+              {/* Verdict */}
+              <div style={{
+                background: "rgba(80,220,120,0.07)",
+                border: "1px solid rgba(80,220,120,0.15)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                marginBottom: 12,
+              }}>
+                <div style={{ color: "#50dc78", fontSize: 14, fontWeight: 700, letterSpacing: -0.2, marginBottom: 4 }}>
+                  Buy now on Amazon.de — €299
+                </div>
+                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 1.5 }}>
+                  This is a 3-month low. Price has been dropping steadily and stock is available. Waiting longer is unlikely to yield a better deal.
+                </div>
+              </div>
+
+              {/* Trend chips */}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[
+                  { label: "↓ Downtrend", color: "#50dc78", bg: "rgba(80,220,120,0.08)", border: "rgba(80,220,120,0.2)" },
+                  { label: "✓ In stock", color: "#50dc78", bg: "rgba(80,220,120,0.08)", border: "rgba(80,220,120,0.2)" },
+                  { label: "⚡ Limited time", color: "#f97316", bg: "rgba(249,115,22,0.08)", border: "rgba(249,115,22,0.2)" },
+                ].map((chip) => (
+                  <span key={chip.label} style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: chip.color,
+                    background: chip.bg,
+                    border: `1px solid ${chip.border}`,
+                    borderRadius: 100,
+                    padding: "3px 10px",
+                    letterSpacing: 0.1,
+                  }}>
+                    {chip.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {divider}
+
           {/* Also available at */}
           <div style={{ ...fadeIn(240) }}>
             <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 600, marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.5 }}>
@@ -515,6 +598,7 @@ export default function ProductDetail({ onNavigate }) {
           {buying ? "Processing…" : "Buy now"}
         </button>
         <button
+          onClick={() => onNavigate?.("delete")}
           onMouseDown={() => setRemovePressed(true)}
           onMouseUp={() => setRemovePressed(false)}
           onTouchStart={() => setRemovePressed(true)}

@@ -208,11 +208,23 @@ function ProductCard({ product, index, onSelect, selected, visible }) {
 export default function Candidates({ onNavigate }) {
   const [visible, setVisible] = useState(false);
   const [selected, setSelected] = useState(1); // default best deal
+  const [savePressed, setSavePressed] = useState(false);
+  const [buyPressed, setBuyPressed] = useState(false);
+  const [shimmer, setShimmer] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 60);
     return () => clearTimeout(t);
   }, []);
+
+  const handleSelect = (id) => {
+    setSelected(id);
+    setShimmer(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setShimmer(true));
+    });
+    setTimeout(() => setShimmer(false), 950);
+  };
 
   const phoneStyle = {
     width: 375,
@@ -330,7 +342,7 @@ export default function Candidates({ onNavigate }) {
               key={p.id}
               product={p}
               index={i}
-              onSelect={setSelected}
+              onSelect={handleSelect}
               selected={selected === p.id}
               visible={visible}
             />
@@ -363,42 +375,102 @@ export default function Candidates({ onNavigate }) {
 
         <div style={{ flex: 1 }} />
 
-        {/* Save button */}
+        {/* Action buttons */}
         <div style={{
+          display: "flex",
+          gap: 10,
           marginTop: 28,
           opacity: visible ? 1 : 0,
           transform: visible ? "translateY(0)" : "translateY(20px)",
           transition: "opacity 0.45s 0.35s, transform 0.45s 0.35s",
         }}>
+          {/* Save to wishlist — solid green */}
           <button
             onClick={() => onNavigate?.("wishlist")}
+            onMouseDown={() => setSavePressed(true)}
+            onMouseUp={() => setSavePressed(false)}
+            onMouseLeave={() => setSavePressed(false)}
+            onTouchStart={() => setSavePressed(true)}
+            onTouchEnd={() => setSavePressed(false)}
             style={{
-              width: "100%",
-              height: 54,
-              borderRadius: 100,
-              border: "none",
-              background: "#50dc78",
+              flex: 1, height: 54,
+              borderRadius: "21px / 21px",
+              WebkitAppearance: "none",
+              border: "2px solid #50dc78",
+              background: savePressed ? "#3ab860" : "#50dc78",
               color: "#021208",
-              fontSize: 16,
-              fontWeight: 800,
+              fontSize: 15, fontWeight: 800,
               cursor: "pointer",
-              letterSpacing: -0.3,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              boxShadow: "0 8px 32px rgba(80,220,120,0.25)",
-              transition: "filter 0.15s, transform 0.15s",
+              letterSpacing: -0.2,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              transform: savePressed ? "scale(0.96)" : "scale(1)",
+              transition: "all 0.12s",
             }}
-            onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
-            onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
-            onTouchStart={(e) => e.currentTarget.style.transform = "scale(0.97)"}
-            onTouchEnd={(e) => e.currentTarget.style.transform = "scale(1)"}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#021208" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-            Save best deal to wishlist
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%",
+              background: "#000",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#50dc78" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            </div>
+            Save
+          </button>
+
+          {/* Buy selected — outlined dark */}
+          <style>{`
+            @keyframes buy-shimmer {
+              from { transform: translateX(-100%) skewX(-12deg); }
+              to   { transform: translateX(350%)  skewX(-12deg); }
+            }
+          `}</style>
+          <button
+            onClick={() => onNavigate?.("success")}
+            onMouseDown={() => setBuyPressed(true)}
+            onMouseUp={() => setBuyPressed(false)}
+            onMouseLeave={() => setBuyPressed(false)}
+            onTouchStart={() => setBuyPressed(true)}
+            onTouchEnd={() => setBuyPressed(false)}
+            style={{
+              flex: 1, height: 54,
+              borderRadius: "21px / 21px",
+              WebkitAppearance: "none",
+              border: "2px solid #50dc78",
+              background: buyPressed ? "#0f2018" : "#0a1810",
+              color: "#fff",
+              fontSize: 15, fontWeight: 800,
+              cursor: "pointer",
+              letterSpacing: -0.2,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              transform: buyPressed ? "scale(0.96)" : "scale(1)",
+              transition: "all 0.12s",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {shimmer && (
+              <div style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
+                animation: "buy-shimmer 1.5s ease forwards",
+                pointerEvents: "none",
+              }} />
+            )}
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%",
+              background: "#50dc78",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </div>
+            Buy selected
           </button>
         </div>
 
