@@ -18,6 +18,8 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState(null)
   // Counts shown on home — one fetch per filter endpoint, refreshed on home mount.
   const [counts, setCounts] = useState({ all: 0, discount: 0, bought: 0 })
+  // Live BUNQ balance for the "Total saved" pill on home. null = loading.
+  const [balance, setBalance] = useState(null)
 
   useEffect(() => {
     if (screen !== 'home') return
@@ -28,6 +30,9 @@ function App() {
     ]).then(([all, discount, bought]) =>
       setCounts({ all: all.length, discount: discount.length, bought: bought.length })
     )
+    api.getBalance()
+      .then((b) => setBalance(parseFloat(b.value)))
+      .catch((e) => console.error('balance fetch failed:', e))
   }, [screen])
 
   const homeStats = {
@@ -43,6 +48,7 @@ function App() {
           onNavigate={setScreen}
           itemCount={counts.all}
           stats={homeStats}
+          currentBalance={balance}
         />
       )}
       {screen === 'find' && (

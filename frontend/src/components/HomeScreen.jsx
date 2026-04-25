@@ -16,6 +16,8 @@ export default function SmartWishlist({
   onNavigate,
   itemCount = 24,
   totalSaved = 847,
+  // Live BUNQ balance shown in the "Total saved" pill. null = loading.
+  currentBalance = null,
   stats = { bought: 17, onDiscount: 5, allTime: 42 },
 }) {
   const isMobile = useIsMobile();
@@ -277,7 +279,11 @@ export default function SmartWishlist({
             </div>
             <div>
               <div style={s.pillLabel}>Total saved</div>
-              <div style={s.pillValGreen}>€{totalSaved}</div>
+              <div style={s.pillValGreen}>
+                {currentBalance == null
+                  ? "…"
+                  : `€${currentBalance.toFixed(2)}`}
+              </div>
             </div>
           </div>
         </div>
