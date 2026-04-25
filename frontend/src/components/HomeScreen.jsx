@@ -7,16 +7,14 @@ import { useIsMobile, phoneFrame } from "../lib/phoneFrame";
  * SmartWishlist
  *
  * Props:
- *   itemCount    {number}  — total items on wishlist         (default 24)
- *   totalSaved   {number}  — total euros saved               (default 847)
- *   savingsData  {Array<{month: string, value: number}>}     (default Jan–Apr)
- *   stats        {{ bought: number, onDiscount: number, allTime: number }}
+ *   itemCount       {number}  — total items on wishlist                       (default 24)
+ *   currentBalance  {number?} — live BUNQ balance for the "Current balance" pill; null = loading
+ *   stats           {{ bought: number, onDiscount: number, allTime: number }}
  */
 export default function SmartWishlist({
   onNavigate,
   itemCount = 24,
-  totalSaved = 847,
-  // Live BUNQ balance shown in the "Total saved" pill. null = loading.
+  // Live BUNQ balance shown in the "Current balance" pill. null = loading.
   currentBalance = null,
   stats = { bought: 17, onDiscount: 5, allTime: 42 },
 }) {
