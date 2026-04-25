@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api";
 
 // What we charge against BUNQ when "Buy now" is pressed. The shown product
@@ -21,50 +21,210 @@ const OTHER_STORES = [
   { store: "MediaMarkt",price: "€349", inStock: false },
 ];
 
+const ANIM_DURATION = 1500;
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+const CW = 335, CH = 100, PAD_T = 14, PAD_B = 8;
+
+function measurePath(d) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", d);
+  svg.appendChild(path);
+  svg.style.position = "absolute";
+  svg.style.visibility = "hidden";
+  document.body.appendChild(svg);
+  const len = path.getTotalLength();
+  document.body.removeChild(svg);
+  return len;
+}
+
+function interpValueAtX(pts, x) {
+  if (x <= pts[0].x) return pts[0].value;
+  if (x >= pts[pts.length - 1].x) return pts[pts.length - 1].value;
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (x >= pts[i].x && x <= pts[i + 1].x) {
+      const t = (x - pts[i].x) / (pts[i + 1].x - pts[i].x);
+      return Math.round(pts[i].value + t * (pts[i + 1].value - pts[i].value));
+    }
+  }
+  return 0;
+}
+
+function interpYAtX(pts, x) {
+  if (x <= pts[0].x) return pts[0].y;
+  if (x >= pts[pts.length - 1].x) return pts[pts.length - 1].y;
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (x >= pts[i].x && x <= pts[i + 1].x) {
+      const t2 = (x - pts[i].x) / (pts[i + 1].x - pts[i].x);
+      return (1-t2)*(1-t2)*(1-t2)*pts[i].y
+           + 3*(1-t2)*(1-t2)*t2*pts[i].y
+           + 3*(1-t2)*t2*t2*pts[i+1].y
+           + t2*t2*t2*pts[i+1].y;
+    }
+  }
+  return 0;
+}
+
 function PriceChart({ data }) {
-  const W = 335, H = 90;
   const values = data.map((d) => d.value);
-  const min = Math.min(...values) - 20;
-  const max = Math.max(...values) + 10;
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+  const range = maxV - minV || 1;
 
   const pts = data.map((d, i) => ({
-    x: (i / (data.length - 1)) * W,
-    y: H - 6 - ((d.value - min) / (max - min)) * (H - 16),
+    x: (i / (data.length - 1)) * CW,
+    y: PAD_T + (1 - (d.value - minV) / range) * (CH - PAD_T - PAD_B),
+    value: d.value,
+    month: d.month,
   }));
 
-  const buildPath = (points) => {
-    let d = `M${points[0].x},${points[0].y}`;
-    for (let i = 1; i < points.length; i++) {
-      const cpx = (points[i - 1].x + points[i].x) / 2;
-      d += ` C${cpx},${points[i - 1].y} ${cpx},${points[i].y} ${points[i].x},${points[i].y}`;
+  const buildCurve = (ps) => {
+    let d = `M${ps[0].x},${ps[0].y}`;
+    for (let i = 1; i < ps.length; i++) {
+      const cpx = (ps[i - 1].x + ps[i].x) / 2;
+      d += ` C${cpx},${ps[i - 1].y} ${cpx},${ps[i].y} ${ps[i].x},${ps[i].y}`;
     }
     return d;
   };
 
-  const line = buildPath(pts);
-  const area = line + ` L${pts[pts.length - 1].x},${H} L${pts[0].x},${H} Z`;
-  const last = pts[pts.length - 1];
+  const linePath = buildCurve(pts);
+  const areaPath = linePath + ` L${pts[pts.length-1].x},${CH} L${pts[0].x},${CH} Z`;
+  const lastPt = pts[pts.length - 1];
+
+  const [progress, setProgress] = useState(0);
+  const [monthVis, setMonthVis] = useState([false, false, false]);
+  const [pathLen, setPathLen] = useState(400);
+  const [hoverX, setHoverX] = useState(null);
+  const [tooltipVal, setTooltipVal] = useState(null);
+  const svgRef = useRef(null);
+  const startRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      const len = measurePath(linePath);
+      if (len > 0) setPathLen(len);
+    } catch(e) {}
+  }, [linePath]);
+
+  useEffect(() => {
+    let raf;
+    const tick = (ts) => {
+      if (!startRef.current) startRef.current = ts;
+      const t = Math.min((ts - startRef.current) / ANIM_DURATION, 1);
+      const eased = easeOutCubic(t);
+      setProgress(eased);
+      setMonthVis([eased >= 0.0, eased >= 0.4, eased >= 0.8]);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const handleMouseMove = useCallback((e) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const x = Math.max(pts[0].x, Math.min(pts[pts.length-1].x, (e.clientX - rect.left) * (CW / rect.width)));
+    setHoverX(x);
+    setTooltipVal(interpValueAtX(pts, x));
+  }, [pts]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!svgRef.current) return;
+    e.preventDefault();
+    const rect = svgRef.current.getBoundingClientRect();
+    const x = Math.max(pts[0].x, Math.min(pts[pts.length-1].x, (e.touches[0].clientX - rect.left) * (CW / rect.width)));
+    setHoverX(x);
+    setTooltipVal(interpValueAtX(pts, x));
+  }, [pts]);
+
+  const handleLeave = useCallback(() => { setHoverX(null); setTooltipVal(null); }, []);
+
+  const dashOffset = pathLen * (1 - progress);
+  const hoverY = hoverX !== null ? interpYAtX(pts, hoverX) : null;
 
   return (
-    <div>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" height={H} style={{ display: "block" }}>
-        <defs>
-          <linearGradient id="pdGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#50dc78" stopOpacity="0.35"/>
-            <stop offset="100%" stopColor="#50dc78" stopOpacity="0"/>
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#pdGrad)"/>
-        <path d={line} fill="none" stroke="#50dc78" strokeWidth="2.5" strokeLinecap="round"/>
-        <circle cx={last.x} cy={last.y} r="8" fill="#50dc78" opacity="0.2"/>
-        <circle cx={last.x} cy={last.y} r="4.5" fill="#50dc78"/>
-      </svg>
-      <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 2px 0" }}>
-        {data.map((d) => (
-          <span key={d.month} style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>{d.month}</span>
-        ))}
+    <>
+      <style>{`
+        @keyframes pc-dot-pulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(80,220,120,0.6), 0 0 8px 2px rgba(80,220,120,0.3); }
+          50%     { box-shadow: 0 0 0 6px rgba(80,220,120,0), 0 0 16px 6px rgba(80,220,120,0.5); }
+        }
+        @keyframes pc-aurora-1 {
+          0%,100% { transform: translateX(-60%) translateY(10%) scale(1);    opacity: 0.5; }
+          30%     { transform: translateX(20%)  translateY(-15%) scale(1.2); opacity: 0.8; }
+          60%     { transform: translateX(80%)  translateY(20%) scale(0.9);  opacity: 0.4; }
+        }
+        @keyframes pc-aurora-2 {
+          0%,100% { transform: translateX(80%)  translateY(-20%) scale(1.1); opacity: 0.3; }
+          40%     { transform: translateX(10%)  translateY(30%)  scale(0.85);opacity: 0.6; }
+          70%     { transform: translateX(-40%) translateY(-10%) scale(1.2); opacity: 0.25; }
+        }
+      `}</style>
+      <div style={{
+        width: "100%", borderRadius: 16, padding: "20px 16px 16px",
+        position: "relative", overflow: "hidden", boxSizing: "border-box",
+        background: "#0d1a10", border: "1px solid rgba(80,220,120,0.12)",
+        cursor: "crosshair", userSelect: "none",
+      }}>
+        <div style={{ position: "absolute", width: "70%", height: "140%", top: "-20%", left: 0, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(80,220,120,0.18) 0%, rgba(40,180,80,0.08) 40%, transparent 70%)", animation: "pc-aurora-1 8s ease-in-out infinite", pointerEvents: "none", filter: "blur(18px)" }} />
+        <div style={{ position: "absolute", width: "55%", height: "120%", top: "-10%", left: "30%", borderRadius: "50%", background: "radial-gradient(ellipse, rgba(60,200,100,0.12) 0%, rgba(80,220,120,0.05) 50%, transparent 70%)", animation: "pc-aurora-2 11s ease-in-out infinite", pointerEvents: "none", filter: "blur(24px)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 60% 40% at 80% 20%, rgba(80,220,120,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, position: "relative", zIndex: 2 }}>
+          <div>
+            <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 18, fontWeight: 500, letterSpacing: -0.1 }}>Price history</div>
+            <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 13, marginTop: 3 }}>3-month low</div>
+          </div>
+          <div style={{ color: "#50dc78", fontSize: 28, fontWeight: 800, letterSpacing: -1.2, lineHeight: 1, textShadow: "0 0 20px rgba(80,220,120,0.4)", fontVariantNumeric: "tabular-nums" }}>
+            €{minV}
+          </div>
+        </div>
+
+        <svg ref={svgRef} viewBox={`0 0 ${CW} ${CH}`} width="100%" height={CH}
+          style={{ display: "block", overflow: "hidden", position: "relative", zIndex: 2 }}
+          onMouseMove={handleMouseMove} onMouseLeave={handleLeave}
+          onTouchMove={handleTouchMove} onTouchEnd={handleLeave}
+        >
+          <defs>
+            <linearGradient id="pc-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"  stopColor="#50dc78" stopOpacity="0.35"/>
+              <stop offset="85%" stopColor="#50dc78" stopOpacity="0"/>
+            </linearGradient>
+            <clipPath id="pc-clip">
+              <rect x="0" y="0" width={CW * progress} height={CH + 10} />
+            </clipPath>
+          </defs>
+          <path d={areaPath} fill="url(#pc-area)" clipPath="url(#pc-clip)" />
+          <path d={linePath} fill="none" stroke="#50dc78" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            strokeDasharray={pathLen} strokeDashoffset={dashOffset}
+            style={{ filter: "drop-shadow(0 0 4px rgba(80,220,120,0.5))" }}
+          />
+          {hoverX !== null && (
+            <>
+              <line x1={hoverX} y1={PAD_T - 6} x2={hoverX} y2={CH} stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="3 3" />
+              <circle cx={hoverX} cy={hoverY} r="4" fill="#50dc78" style={{ filter: "drop-shadow(0 0 5px rgba(80,220,120,0.8))" }} />
+              <g transform={`translate(${Math.min(hoverX, CW - 48)}, ${Math.max((hoverY || 0) - 32, 2)})`}>
+                <rect x="-2" y="0" width="50" height="22" rx="6" fill="rgba(0,0,0,0.75)" stroke="rgba(80,220,120,0.3)" strokeWidth="1" />
+                <text x="23" y="15" textAnchor="middle" fill="#50dc78" fontSize="11" fontWeight="700" fontFamily='"SF Pro Rounded", sans-serif'>€{tooltipVal}</text>
+              </g>
+            </>
+          )}
+          {progress > 0.92 && (
+            <foreignObject x={lastPt.x - 6} y={lastPt.y - 6} width="12" height="12" style={{ overflow: "visible" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#50dc78", margin: 2, animation: "pc-dot-pulse 2s ease-in-out infinite", opacity: Math.min(1, (progress - 0.92) / 0.08) }} />
+            </foreignObject>
+          )}
+        </svg>
+
+        <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 8, position: "relative", zIndex: 2 }}>
+          {data.map((d, i) => (
+            <span key={d.month} style={{ color: "rgba(255,255,255,0.25)", fontSize: 11, fontWeight: 500, opacity: monthVis[i] ? 1 : 0, transform: monthVis[i] ? "translateY(0)" : "translateY(4px)", transition: `opacity 0.4s ease ${i * 80}ms, transform 0.4s ease ${i * 80}ms` }}>
+              {d.month}
+            </span>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -254,21 +414,7 @@ export default function ProductDetail({ onNavigate }) {
 
           {/* Price history */}
           <div style={{ ...fadeIn(190), marginBottom: 22 }}>
-            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 600, marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              Price history
-            </div>
-            <div style={{
-              background: "#0e1a12",
-              border: "1px solid rgba(80,220,120,0.12)",
-              borderRadius: 16,
-              padding: "14px 14px 10px",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
-                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 13 }}>3 month low</span>
-                <span style={{ color: "#50dc78", fontSize: 18, fontWeight: 800, letterSpacing: -0.5 }}>€299</span>
-              </div>
-              <PriceChart data={PRICE_HISTORY} />
-            </div>
+            <PriceChart data={PRICE_HISTORY} />
           </div>
 
           {divider}
@@ -343,27 +489,29 @@ export default function ProductDetail({ onNavigate }) {
           onTouchStart={() => setBuyPressed(true)}
           onTouchEnd={() => setBuyPressed(false)}
           style={{
-            flex: 1, height: 52,
-            borderRadius: 100,
-            border: "none",
-            background: "#50dc78",
-            color: "#021208",
+            flex: 1, height: 54,
+            borderRadius: "21px / 21px",
+            WebkitAppearance: "none",
+            border: "2px solid #50dc78",
+            background: buyPressed && !buying ? "#0f2018" : "#0a1810",
+            color: "#fff",
             fontSize: 15, fontWeight: 800,
             cursor: buying ? "wait" : "pointer",
             letterSpacing: -0.2,
             transform: buyPressed && !buying ? "scale(0.96)" : "scale(1)",
-            transition: "transform 0.15s, filter 0.15s",
-            filter: buying ? "brightness(0.7)" : (buyPressed ? "brightness(0.85)" : "none"),
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            boxShadow: "0 6px 24px rgba(80,220,120,0.3)",
+            transition: "all 0.12s",
+            filter: buying ? "brightness(0.6)" : "none",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
             opacity: buying ? 0.7 : 1,
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#021208" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-            <polyline points="15 3 21 3 21 9"/>
-            <line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#50dc78", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </div>
           {buying ? "Processing…" : "Buy now"}
         </button>
         <button
@@ -372,25 +520,28 @@ export default function ProductDetail({ onNavigate }) {
           onTouchStart={() => setRemovePressed(true)}
           onTouchEnd={() => setRemovePressed(false)}
           style={{
-            flex: 1, height: 52,
-            borderRadius: 100,
-            border: "1px solid rgba(255,80,80,0.2)",
-            background: removePressed ? "rgba(255,80,80,0.08)" : "#1c1c1e",
-            color: "rgba(255,100,100,0.8)",
-            fontSize: 15, fontWeight: 700,
+            flex: 1, height: 54,
+            borderRadius: "21px / 21px",
+            WebkitAppearance: "none",
+            border: "2px solid #ec4899",
+            background: removePressed ? "#220d1c" : "#180910",
+            color: "#fff",
+            fontSize: 15, fontWeight: 800,
             cursor: "pointer",
             letterSpacing: -0.2,
             transform: removePressed ? "scale(0.96)" : "scale(1)",
-            transition: "transform 0.15s, background 0.15s",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            transition: "all 0.12s",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
           }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,100,100,0.8)" strokeWidth="2.2" strokeLinecap="round">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-            <path d="M10 11v6M14 11v6"/>
-            <path d="M9 6V4h6v2"/>
-          </svg>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#ec4899", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6M14 11v6"/>
+              <path d="M9 6V4h6v2"/>
+            </svg>
+          </div>
           Remove
         </button>
       </div>
