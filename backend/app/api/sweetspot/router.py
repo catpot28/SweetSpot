@@ -24,7 +24,7 @@ ClientDep = Annotated[BunqClient, Depends(get_bunq_client)]
 # Schemas
 # ---------------------------------------------------------------------------
 
-class AnalyzeRequest(BaseModel):
+class SearchRequest(BaseModel):
     image_url: str
 
 
@@ -36,13 +36,21 @@ class ProductMatch(BaseModel):
     thumbnail: str | None
 
 
+class SearchResponse(BaseModel):
+    matches: list[ProductMatch]
+
+
+class ScoreRequest(BaseModel):
+    prices: list[float]
+
+
 class ScoreBreakdown(BaseModel):
     price_position: int
     headroom: int
     promotion: int
 
 
-class AnalyzeResponse(BaseModel):
+class ScoreResponse(BaseModel):
     sweetspot: bool
     score: int
     tier: str
@@ -51,57 +59,59 @@ class AnalyzeResponse(BaseModel):
     disposable: float
     deficit: float
     score_breakdown: ScoreBreakdown
-    matches: list[ProductMatch]
 
 
 # ---------------------------------------------------------------------------
-# Endpoint
+# Endpoints
 # ---------------------------------------------------------------------------
 
-@router.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(body: AnalyzeRequest, client: ClientDep) -> AnalyzeResponse:
+@router.post("/search", response_model=SearchResponse)
+async def search(body: SearchRequest) -> SearchResponse:
+    """Run a Google Lens product search via SerpApi and return the top matches."""
+    log.info("sweetspot/search: image_url=%s", body.image_url)
+    try:
+        matches = await fetch_products(body.image_url)
+    except Exception as exc:
+        log.exception("SerpApi search failed")
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    log.info("sweetspot/search: %d matches", len(matches))
+    return SearchResponse(matches=[_to_match(m) for m in matches])
+
+
+@router.post("/score", response_model=ScoreResponse)
+async def score(body: ScoreRequest, client: ClientDep) -> ScoreResponse:
+    """
+    Given a list of prices from /sweetspot/search, score the purchase
+    against the user's current BUNQ balance and spending history.
+    """
+    if not body.prices:
+        raise HTTPException(status_code=422, detail="prices list must not be empty")
+
     # 1. Fetch balance
-    log.info("analyze: fetching balance")
+    log.info("score: fetching balance")
     balance_data = await ops.get_balance(client)
     balance = Decimal(str(balance_data["value"]))
     log.info("balance=%.2f", balance)
 
     # 2. Fetch transaction history
-    log.info("analyze: fetching transactions")
+    log.info("score: fetching transactions")
     transactions = await ops.list_transactions(client, count=200)
     log.info("transactions fetched: %d", len(transactions))
 
-    # 3. Build spending summary from tagged transactions
+    # 3. Build spending summary
     summary = sweetspot.build_spending_summary(balance, transactions)
     log.info(
         "spending: fixed_monthly=%.2f variable_monthly=%.2f disposable=%.2f days=%d",
         summary.fixed_monthly, summary.variable_monthly, summary.disposable, summary.days_analyzed,
     )
 
-    # 4. Search SerpApi for prices
-    log.info("analyze: calling SerpApi image_url=%s", body.image_url)
-    try:
-        matches = await fetch_products(body.image_url)
-    except Exception as exc:
-        log.exception("SerpApi call failed")
-        raise HTTPException(status_code=502, detail=f"SerpApi error: {exc}") from exc
-    log.info("serpapi: %d matches", len(matches))
-
-    # 5. Extract numeric prices
-    prices = _extract_prices(matches)
-    log.info("parsed prices: %s", [float(p) for p in prices])
-
-    if not prices:
-        raise HTTPException(
-            status_code=422,
-            detail="No prices found in SerpApi results — try a clearer product photo.",
-        )
-
-    # 6. Score
+    # 4. Score
+    prices = [Decimal(str(p)) for p in body.prices]
     result = sweetspot.score(summary, prices)
     log.info("result: sweetspot=%s score=%d tier=%s", result.sweetspot, result.score, result.tier)
 
-    return AnalyzeResponse(
+    return ScoreResponse(
         sweetspot=result.sweetspot,
         score=result.score,
         tier=result.tier,
@@ -110,22 +120,12 @@ async def analyze(body: AnalyzeRequest, client: ClientDep) -> AnalyzeResponse:
         disposable=float(result.disposable),
         deficit=float(result.deficit),
         score_breakdown=ScoreBreakdown(**result.score_breakdown),
-        matches=[_to_match(m) for m in matches],
     )
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _extract_prices(matches: list[dict[str, Any]]) -> list[Decimal]:
-    prices: list[Decimal] = []
-    for m in matches:
-        ep = m.get("extracted_price")
-        if isinstance(ep, (int, float)) and not isinstance(ep, bool) and ep > 0:
-            prices.append(Decimal(str(ep)))
-    return prices
-
 
 def _to_match(m: dict[str, Any]) -> ProductMatch:
     ep = m.get("extracted_price")
