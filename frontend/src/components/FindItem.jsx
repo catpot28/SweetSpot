@@ -6,7 +6,6 @@ export default function FindItem({ onNavigate }) {
   const [glowIntensity, setGlowIntensity] = useState(0.4);
   const [gridOffset, setGridOffset] = useState(0);
   const [captured, setCaptured] = useState(false);
-  const animRef = useRef(null);
   const startTimeRef = useRef(null);
 
   const SCAN_DURATION = 2200; // ms for one sweep
@@ -165,16 +164,34 @@ export default function FindItem({ onNavigate }) {
     boxShadow: bracketGlow,
   };
 
-  // Scan line
+  // Laser beam — bright tip + comet tail fading upward
+  const tailHeight = Math.min(scanY, 80);
   const scanLine = {
     position: "absolute",
-    left: 4,
-    right: 4,
+    left: 0,
+    right: 0,
+    top: Math.max(0, scanY - tailHeight),
+    height: tailHeight + 2,
+    background: `linear-gradient(to bottom,
+      transparent 0%,
+      rgba(80,220,120,0.06) 40%,
+      rgba(80,220,120,0.25) 75%,
+      rgba(140,255,180,${0.85 + glowIntensity * 0.15}) 100%
+    )`,
+    pointerEvents: "none",
+    display: mode === "camera" ? "block" : "none",
+  };
+
+  // Laser tip — the bright sharp line at the bottom of the tail
+  const laserTip = {
+    position: "absolute",
+    left: 0,
+    right: 0,
     top: scanY,
     height: 2,
-    background: `linear-gradient(90deg, transparent, rgba(80,220,120,${glowIntensity * 0.9}), rgba(120,255,160,${glowIntensity}), rgba(80,220,120,${glowIntensity * 0.9}), transparent)`,
-    boxShadow: `0 0 ${8 + glowIntensity * 12}px rgba(80,220,120,${glowIntensity * 0.7})`,
-    borderRadius: 1,
+    background: `linear-gradient(90deg, transparent, rgba(180,255,210,0.9), rgba(255,255,255,1), rgba(180,255,210,0.9), transparent)`,
+    boxShadow: `0 0 6px 2px rgba(80,220,120,0.9), 0 0 18px 4px rgba(80,220,120,0.5)`,
+    borderRadius: 2,
     pointerEvents: "none",
     display: mode === "camera" ? "block" : "none",
   };
@@ -206,10 +223,11 @@ export default function FindItem({ onNavigate }) {
 
   const hintText = {
     color: "rgba(255,255,255,0.55)",
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: 500,
     textAlign: "center",
     letterSpacing: -0.2,
+    fontFamily: '"SF Pro Rounded", sans-serif',
   };
 
   // Bottom overlay
@@ -240,16 +258,19 @@ export default function FindItem({ onNavigate }) {
 
   const toggleBtn = (active) => ({
     flex: 1,
-    height: 32,
+    height: 36,
+    padding: "0 22px",
     borderRadius: 100,
     border: "none",
     background: active ? "rgba(255,255,255,0.18)" : "transparent",
     color: active ? "#fff" : "rgba(255,255,255,0.45)",
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.2s",
     letterSpacing: -0.2,
+    fontFamily: '"SF Pro Rounded", sans-serif',
+    whiteSpace: "nowrap",
   });
 
   // Capture button
@@ -276,16 +297,6 @@ export default function FindItem({ onNavigate }) {
     border: "1px solid rgba(255,255,255,0.1)",
   };
 
-  const pasteLinkStyle = {
-    color: "rgba(80,220,120,0.8)",
-    fontSize: 14,
-    fontWeight: 500,
-    cursor: "pointer",
-    letterSpacing: -0.1,
-    textDecoration: "none",
-    marginTop: -6,
-  };
-
   return (
     <div style={phoneStyle}>
       {/* Camera BG */}
@@ -307,7 +318,7 @@ export default function FindItem({ onNavigate }) {
 
       {/* Status bar */}
       <div style={statusBar}>
-        <span style={{ color: "#fff", fontSize: 16, fontWeight: 600 }}>9:41</span>
+        <span style={{ color: "#fff", fontSize: 18, fontWeight: 600 }}>9:41</span>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <svg width="17" height="11" viewBox="0 0 17 11" fill="white">
             <rect x="0" y="7" width="3" height="4" rx="0.8" opacity="0.35"/>
@@ -340,8 +351,9 @@ export default function FindItem({ onNavigate }) {
               {corners.map((c, i) => (
                 <div key={i} style={{ ...cornerBase, ...c }} />
               ))}
-              {/* Scan line */}
+              {/* Laser beam: tail + tip */}
               <div style={scanLine} />
+              <div style={laserTip} />
               <div style={scanOverlay} />
               {/* Dim inner */}
               <div style={{
@@ -360,7 +372,7 @@ export default function FindItem({ onNavigate }) {
                 <polyline points="17 8 12 3 7 8"/>
                 <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, fontWeight: 600, textAlign: "center", letterSpacing: -0.2 }}>
+              <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 18, fontWeight: 600, textAlign: "center", letterSpacing: -0.2 }}>
                 Tap to upload<br/>screenshot
               </div>
             </div>
@@ -396,8 +408,6 @@ export default function FindItem({ onNavigate }) {
           </div>
         </div>
 
-        {/* Paste link */}
-        <span style={pasteLinkStyle}>or paste a link</span>
       </div>
     </div>
   );

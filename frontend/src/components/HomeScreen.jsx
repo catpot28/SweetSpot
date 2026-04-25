@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SavingsChart from './SavingsChart';
 
 /**
  * SmartWishlist
@@ -13,44 +14,11 @@ export default function SmartWishlist({
   onNavigate,
   itemCount = 24,
   totalSaved = 847,
-  savingsData = [
-    { month: "Jan", value: 60 },
-    { month: "Feb", value: 200 },
-    { month: "Mar", value: 480 },
-    { month: "Apr", value: 847 },
-  ],
   stats = { bought: 17, onDiscount: 5, allTime: 42 },
 }) {
   const [activeTab, setActiveTab] = useState("wishlist");
   const [findPressed, setFindPressed] = useState(false);
   const [wishlistPressed, setWishlistPressed] = useState(false);
-
-  // Build SVG chart path from savingsData
-  const chartW = 327;
-  const chartH = 100;
-  const maxVal = Math.max(...savingsData.map((d) => d.value));
-  const points = savingsData.map((d, i) => ({
-    x: (i / (savingsData.length - 1)) * chartW,
-    y: chartH - 3 - ((d.value / maxVal) * (chartH - 10)),
-  }));
-
-  const buildPath = (pts) => {
-    if (pts.length < 2) return "";
-    let d = `M${pts[0].x},${pts[0].y}`;
-    for (let i = 1; i < pts.length; i++) {
-      const cp1x = pts[i - 1].x + (pts[i].x - pts[i - 1].x) / 2;
-      const cp2x = pts[i].x - (pts[i].x - pts[i - 1].x) / 2;
-      d += ` C${cp1x},${pts[i - 1].y} ${cp2x},${pts[i].y} ${pts[i].x},${pts[i].y}`;
-    }
-    return d;
-  };
-
-  const linePath = buildPath(points);
-  const areaPath =
-    linePath +
-    ` L${points[points.length - 1].x},${chartH} L${points[0].x},${chartH} Z`;
-
-  const last = points[points.length - 1];
 
   // ─── Styles ───────────────────────────────────────────────────────────────
 
@@ -63,8 +31,6 @@ export default function SmartWishlist({
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
-      fontFamily:
-        "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif",
       boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
       position: "relative",
       margin: "auto",
@@ -77,7 +43,7 @@ export default function SmartWishlist({
       justifyContent: "space-between",
       padding: "0 26px 8px",
     },
-    statusTime: { color: "#fff", fontSize: 16, fontWeight: 600, letterSpacing: -0.3 },
+    statusTime: { color: "#fff", fontSize: 16, fontWeight: 600, letterSpacing: -0.3, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" },
     statusRight: { display: "flex", alignItems: "center", gap: 6 },
 
     scroll: {
@@ -98,7 +64,7 @@ export default function SmartWishlist({
       lineHeight: 1.05,
     },
 
-    statPills: { display: "flex", gap: 10, padding: "0 20px 28px" },
+    statPills: { display: "flex", gap: 10, padding: "0 20px 14px" },
     statPill: {
       flex: 1,
       background: "#1c1c1e",
@@ -111,15 +77,26 @@ export default function SmartWishlist({
       position: "relative",
       overflow: "hidden",
     },
+    statPillSavings: {
+      flex: 1,
+      background: "#0d1a10",
+      borderRadius: 14,
+      padding: "12px 14px",
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      position: "relative",
+      overflow: "hidden",
+    },
     pillIconGreen: {
       width: 34, height: 34, borderRadius: "50%",
       background: "#1a3d28",
       display: "flex", alignItems: "center", justifyContent: "center",
       flexShrink: 0,
     },
-    pillIconBlue: {
+    pillIconPink: {
       width: 34, height: 34, borderRadius: "50%",
-      background: "#1a2d50",
+      background: "#3d1a2d",
       display: "flex", alignItems: "center", justifyContent: "center",
       flexShrink: 0,
     },
@@ -127,8 +104,10 @@ export default function SmartWishlist({
     pillVal: { color: "#fff", fontSize: 18, fontWeight: 800, letterSpacing: -0.5, marginTop: 1 },
     pillValGreen: { color: "#50dc78", fontSize: 18, fontWeight: 800, letterSpacing: -0.5, marginTop: 1 },
     pillChevron: { color: "rgba(255,255,255,0.2)", fontSize: 17, fontWeight: 300, marginLeft: "auto" },
+    pillChevronPink: { color: "rgba(255,255,255,0.2)", fontSize: 17, fontWeight: 300, marginLeft: "auto" },
+    pillChevronGreen: { color: "rgba(80,220,120,0.35)", fontSize: 17, fontWeight: 300, marginLeft: "auto" },
 
-    chartZone: { padding: "0 20px 28px" },
+    chartZone: { padding: "0 20px 14px" },
     chartCard: {
       background: "#0e1a12",
       border: "1px solid rgba(80,220,120,0.15)",
@@ -151,37 +130,40 @@ export default function SmartWishlist({
     },
     chartMonth: { color: "rgba(255,255,255,0.25)", fontSize: 12 },
 
-    actionRow: { display: "flex", gap: 10, padding: "0 20px 32px" },
+    actionRow: { display: "flex", gap: 10, padding: "0 20px 16px" },
     btnFind: {
-      flex: 1, height: 50, borderRadius: 100, border: "none",
+      flex: 1, height: 54, borderRadius: "21px / 21px",
+      WebkitAppearance: "none",
+      border: "2px solid #50dc78",
       display: "flex", alignItems: "center", justifyContent: "center",
-      gap: 8, fontSize: 15, fontWeight: 700, cursor: "pointer",
+      gap: 10, fontSize: 15, fontWeight: 800, cursor: "pointer",
       letterSpacing: -0.2,
-      background: findPressed ? "#3ecf66" : "#50dc78",
-      color: "#021208",
+      background: findPressed ? "#0f2018" : "#0a1810",
+      color: "#fff",
       transform: findPressed ? "scale(0.96)" : "scale(1)",
-      transition: "all 0.15s",
+      transition: "all 0.12s",
     },
     btnWishlist: {
-      flex: 1, height: 50, borderRadius: 100,
-      border: "1px solid rgba(255,255,255,0.1)",
+      flex: 1, height: 54, borderRadius: "21px / 21px",
+      WebkitAppearance: "none",
+      border: "2px solid #ec4899",
       display: "flex", alignItems: "center", justifyContent: "center",
-      gap: 8, fontSize: 15, fontWeight: 700, cursor: "pointer",
+      gap: 10, fontSize: 15, fontWeight: 800, cursor: "pointer",
       letterSpacing: -0.2,
-      background: wishlistPressed ? "#2a2a2e" : "#1c1c1e",
+      background: wishlistPressed ? "#220d1c" : "#180910",
       color: "#fff",
       transform: wishlistPressed ? "scale(0.96)" : "scale(1)",
-      transition: "all 0.15s",
+      transition: "all 0.12s",
     },
     btnIcon: {
-      width: 24, height: 24, borderRadius: "50%",
-      background: "rgba(0,0,0,0.15)",
+      width: 28, height: 28, borderRadius: "50%",
+      background: "#50dc78",
       display: "flex", alignItems: "center", justifyContent: "center",
       flexShrink: 0,
     },
-    btnIconDark: {
-      width: 24, height: 24, borderRadius: "50%",
-      background: "rgba(255,255,255,0.08)",
+    btnIconPink: {
+      width: 28, height: 28, borderRadius: "50%",
+      background: "#ec4899",
       display: "flex", alignItems: "center", justifyContent: "center",
       flexShrink: 0,
     },
@@ -189,10 +171,11 @@ export default function SmartWishlist({
     sectionTitle: {
       fontSize: 22, fontWeight: 800, color: "#fff",
       letterSpacing: -0.6, padding: "0 20px 14px",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif",
     },
 
     benefitList: {
-      margin: "0 20px 28px",
+      margin: "0 20px 4px",
       background: "#1c1c1e",
       borderRadius: 18,
       overflow: "hidden",
@@ -238,7 +221,7 @@ export default function SmartWishlist({
 
     footerNote: {
       textAlign: "center", color: "rgba(255,255,255,0.18)",
-      fontSize: 12, padding: "0 20px 16px",
+      fontSize: 12, padding: "16px 20px 16px",
     },
 
     tabBar: {
@@ -268,8 +251,6 @@ export default function SmartWishlist({
     fontSize: 10, fontWeight: 600,
     color: activeTab === id ? "#50dc78" : "#fff",
   });
-  const tabIcon = (id) => ({ color: activeTab === id ? "#50dc78" : "#fff" });
-
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -300,9 +281,10 @@ export default function SmartWishlist({
 
         {/* Stat Pills */}
         <div style={s.statPills}>
-          <div style={s.statPill}>
-            <div style={s.pillIconGreen}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#50dc78" strokeWidth="2.5" strokeLinecap="round">
+          {/* Wishlist pill — pink, clickable */}
+          <div style={s.statPill} onClick={() => onNavigate('wishlist')}>
+            <div style={s.pillIconPink}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
               </svg>
             </div>
@@ -310,11 +292,12 @@ export default function SmartWishlist({
               <div style={s.pillLabel}>Wishlist</div>
               <div style={s.pillVal}>{itemCount} items</div>
             </div>
-            <span style={s.pillChevron}>›</span>
+            <span style={s.pillChevronPink}>›</span>
           </div>
-          <div style={s.statPill}>
-            <div style={s.pillIconBlue}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3a8fff" strokeWidth="2.5" strokeLinecap="round">
+          {/* Total saved pill — green */}
+          <div style={s.statPillSavings}>
+            <div style={s.pillIconGreen}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#50dc78" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="12" y1="1" x2="12" y2="23"/>
                 <path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/>
               </svg>
@@ -323,35 +306,12 @@ export default function SmartWishlist({
               <div style={s.pillLabel}>Total saved</div>
               <div style={s.pillValGreen}>€{totalSaved}</div>
             </div>
-            <span style={s.pillChevron}>›</span>
           </div>
         </div>
 
         {/* Savings Chart */}
         <div style={s.chartZone}>
-          <div style={s.chartCard}>
-            <div style={s.chartHead}>
-              <span style={s.chartHeadLabel}>Savings over time</span>
-              <span style={s.chartHeadVal}>€{totalSaved}</span>
-            </div>
-            <svg style={s.chartSvg} viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none" height={chartH}>
-              <defs>
-                <linearGradient id="swGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#50dc78" stopOpacity="0.4"/>
-                  <stop offset="100%" stopColor="#50dc78" stopOpacity="0"/>
-                </linearGradient>
-              </defs>
-              <path d={areaPath} fill="url(#swGrad)"/>
-              <path d={linePath} fill="none" stroke="#50dc78" strokeWidth="2.5" strokeLinecap="round"/>
-              <circle cx={last.x} cy={last.y} r="9" fill="#50dc78" opacity="0.2"/>
-              <circle cx={last.x} cy={last.y} r="5" fill="#50dc78"/>
-            </svg>
-            <div style={s.chartMonths}>
-              {savingsData.map((d) => (
-                <span key={d.month} style={s.chartMonth}>{d.month}</span>
-              ))}
-            </div>
-          </div>
+          <SavingsChart />
         </div>
 
         {/* Action Buttons */}
@@ -365,7 +325,7 @@ export default function SmartWishlist({
             onClick={() => onNavigate('find')}
           >
             <div style={s.btnIcon}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#021208" strokeWidth="3" strokeLinecap="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
             </div>
@@ -379,8 +339,8 @@ export default function SmartWishlist({
             onTouchEnd={() => setWishlistPressed(false)}
             onClick={() => onNavigate('wishlist')}
           >
-            <div style={s.btnIconDark}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+            <div style={s.btnIconPink}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
               </svg>
             </div>
@@ -417,18 +377,27 @@ export default function SmartWishlist({
             </div>
             <div style={s.benefitVal}>{stats.bought}</div>
           </div>
-          <div style={s.benefitItemBorder}>
-            <div style={s.biOrange}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={s.benefitName}>{stats.allTime} items tracked</div>
-              <div style={s.benefitSub}>All time added to wishlist</div>
-            </div>
-            <div style={s.benefitVal}>{stats.allTime}</div>
+        </div>
+
+        {/* All time tracked — separate non-clickable stat */}
+        <div style={{
+          margin: "4px 20px 0",
+          background: "#2d1505",
+          borderRadius: 18,
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+        }}>
+          <div style={{ ...s.biOrange, background: "#6b3010" }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ ...s.benefitName, color: "#f97316" }}>{stats.allTime} items tracked</div>
+            <div style={{ ...s.benefitSub, color: "rgba(249,115,22,0.8)" }}>All time added to wishlist</div>
           </div>
         </div>
 

@@ -162,7 +162,6 @@ export default function PurchaseSuccess({
       borderRadius: 52,
       overflow: "hidden",
       position: "relative",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif",
       boxShadow: "0 0 0 1px #1a1a1a, 0 48px 96px rgba(0,0,0,0.95)",
       margin: "auto",
       display: "flex",
