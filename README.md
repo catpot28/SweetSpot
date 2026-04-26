@@ -9,7 +9,7 @@ Features:
 * SweetSpot heuristic algorithm for bying opportunity detection based on spending data
 * BunqAPI integration via Bunq Python SDK
 
-## V2:
+## V2(TODO):
 Wishlist management improvement 
 Push notifications and screenshot upload flow implementation
 SerpAPI response filtering 
