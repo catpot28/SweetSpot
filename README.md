@@ -2,7 +2,18 @@
 
 **Scan products, track wishes, buy when finances align.**
 
-A mobile-first PWA + Telegram bot that watches both what you want and what you can afford, then nudges you when the two align.
+A mobile-first PWA integrated with BunqAPI featuring camera/screenshot capture product search, price tracking and smart wishlist management. 
+Features: 
+* GoogleLens and produc search integration via SerpAPI
+* LLM reasoning for human-readable reasoning 
+* SweetSpot heuristic algorithm for bying opportunity detection based on spending data
+* BunqAPI integration via Bunq Python SDK
+
+## V2:
+Wishlist management improvement 
+Push notifications and screenshot upload flow implementation
+SerpAPI response filtering 
+SweetSpot algorithm improvement
 
 ## Design docs
 
@@ -43,13 +54,15 @@ Every folder has its own `README.md` describing what lives there and what is pla
 |---|---|
 | BUNQ integration (client, signing, 5 routes) | **Built** — verified end-to-end against the sandbox |
 | Supabase persistence (`bunq_credentials` + product-side tables) | **Built** — schema in [`infra/supabase/schema.sql`](infra/supabase/schema.sql), live, FastAPI reads from DB |
-| Telegram bot webhook | Pending |
-| Lens pipeline (ImgBB + SerpApi) | Pending |
-| Sweet-spot algorithm | Pending |
-| Anthropic reasoning | Pending |
-| Frontend (React PWA) | Not scaffolded |
-| Railway deploy | Not deployed |
+| Telegram bot webhook |**Needs Revision** |
+| Lens pipeline (ImgBB + SerpApi) | **Built** |
+| Sweet-spot algorithm | **V2** |
+| Anthropic reasoning | **Built** |
+| Frontend (React PWA) | **Built** |
+| Railway deploy |  **Live** |
 
 ## Build order
+
+
 
 Follow the staging in [BUNQ_INTEGRATION.md](BUNQ_INTEGRATION.md). De-risk the BUNQ handshake first — everything else depends on it. Steps 1–3 (handshake → client → routes) are done.
